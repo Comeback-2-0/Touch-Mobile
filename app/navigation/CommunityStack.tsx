@@ -33,7 +33,7 @@ export type CommunityStackParamList = {
   CommunityCompose: { community: CommunitySummary };
   CommunityQueue: { community: CommunitySummary };
   CommunityCreate: undefined;
-  CommunityPost: {community?: CommunitySummary; communityId?: string; contentId: string; focusComment?: boolean};
+  CommunityPost: {community?: CommunitySummary; communityId?: string; contentId: string; commentId?: string; focusComment?: boolean};
   CommunityManage: {community: CommunitySummary};
   CommunityInvite: {community: CommunitySummary};
 };

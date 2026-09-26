@@ -13,6 +13,8 @@ import {
   getAuthTokens,
   saveAuthTokens,
 } from '../utils/authTokenStorage';
+import messaging from '@react-native-firebase/messaging';
+import {revokeNotificationDevice} from '../services/communityNotifications';
 import {createAuthFlowError} from '../utils/authErrors';
 import {
   BackendUser,
@@ -89,6 +91,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   };
 
   const signOut = async () => {
+    await revokeNotificationDevice(await messaging().getToken().catch(() => null));
     const tokens = await getAuthTokens();
     if (tokens?.refreshToken) {
       try {
