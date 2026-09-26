@@ -24,9 +24,8 @@ export function navigateFromCommunityNotification(data: CommunityNotificationDat
     screen = 'CommunityPost';
     params = {communityId, contentId: data.contentId, commentId: data.commentId, focusComment: target === 'comment'};
   } else if (target === 'join_requests') {
-    // Manage currently requires a full summary, so open the community first;
-    // the moderator can enter Manage from the community header.
-    screen = 'CommunityHome';
+    screen = 'CommunityManage';
+    params = {community: {id: communityId, _id: communityId, name: '', description: '', image: '', membersCount: 0}};
   }
   navigationRef.dispatch(CommonActions.navigate({
     name: 'Main',
