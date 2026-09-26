@@ -43,6 +43,7 @@ type Post = {
   score: number;
   comments: unknown[];
   commentsCount?: number;
+  unreadCount?: number;
   link?: string;
   media?: {type?: string; url?: string; mimeType?: string} | null;
   state?: string;
@@ -105,6 +106,9 @@ export default function CommunityHomeScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [firstUnreadPostId, setFirstUnreadPostId] = useState<string | null>(null);
+  const firstUnreadPostRef = useRef<string | null>(null);
   const [membership, setMembership] = useState<any>();
   const [joinRequest, setJoinRequest] = useState<JoinRequest | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -123,15 +127,43 @@ export default function CommunityHomeScreen() {
   const listRef = useRef<FlatList<Post>>(null);
   const stickToLatestRef = useRef(true);
   const loadingOlderRef = useRef(false);
+  const unreadMarkedRef = useRef(false);
+  const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: Array<{item: Post}>}) => {
+    const unreadId = firstUnreadPostRef.current;
+    if (unreadMarkedRef.current || !unreadId) return;
+    const reached = viewableItems.some(entry => entry.item?.id === unreadId);
+    if (!reached) return;
+    const post = viewableItems.find(entry => entry.item?.id === unreadId)?.item;
+    if (!post?.createdAt) return;
+    unreadMarkedRef.current = true;
+    api.post(`/communities/${id}/read`, {postId: post.id, postCreatedAt: post.createdAt})
+      .then(() => {
+        setUnreadCount(0);
+        setFirstUnreadPostId(null);
+      })
+      .catch(() => { unreadMarkedRef.current = false; });
+  }).current;
 
   const joined = membership?.status === 'active';
   const manager = ['owner', 'moderator'].includes(membership?.role);
   const pending = joinRequest?.status === 'pending';
   const declined = joinRequest?.status === 'declined';
   useEffect(() => {
+    firstUnreadPostRef.current = firstUnreadPostId;
+  }, [firstUnreadPostId]);
+  useEffect(() => {
     stickToLatestRef.current = true;
     setNextCursor(null);
   }, [id]);
+
+  useEffect(() => {
+    if (!firstUnreadPostId || !posts.length) return;
+    const index = posts.findIndex(post => post.id === firstUnreadPostId);
+    if (index < 0) return;
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({index, animated: false, viewPosition: 0.12});
+    });
+  }, [firstUnreadPostId, posts]);
 
   const showCommunityInfo = () => {
     Alert.alert(community.name, community.description || 'An anonymous space to speak freely and safely.', [
@@ -162,7 +194,7 @@ export default function CommunityHomeScreen() {
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     try {
-      const feed = await api.get<{posts: Post[]; nextCursor?: string | null}>(
+      const feed = await api.get<{posts: Post[]; nextCursor?: string | null; unreadCount?: number; firstUnreadPostId?: string | null}>(
         `/communities/${id}/content/feed`,
         {params: {limit: FEED_PAGE_SIZE, before: nextCursor}},
       );
@@ -201,6 +233,8 @@ export default function CommunityHomeScreen() {
           ]);
           setPosts(mergeChronological(feed.data.posts || [], 'replace'));
           setNextCursor(feed.data.nextCursor || null);
+          setUnreadCount(Number(feed.data.unreadCount || 0));
+          setFirstUnreadPostId(feed.data.firstUnreadPostId || null);
           setQueueCount((queue.data.posts || []).length);
           if (!refresh) stickToLatestRef.current = true;
         } else {
@@ -523,6 +557,8 @@ export default function CommunityHomeScreen() {
         onScroll={({nativeEvent}) => {
           if (nativeEvent.contentOffset.y < 80) loadOlder();
         }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{itemVisiblePercentThreshold: 35}}
         scrollEventThrottle={160}
         onContentSizeChange={() => {
           if (stickToLatestRef.current && posts.length) {
@@ -537,6 +573,9 @@ export default function CommunityHomeScreen() {
         }}
         ListHeaderComponent={
           <View style={styles.about}>
+            {unreadCount > 0 && firstUnreadPostId ? (
+              <Text style={styles.loadingOlder}>Unread posts · {unreadCount}</Text>
+            ) : null}
             {loadingOlder ? (
               <Text style={styles.loadingOlder}>Loading earlier posts...</Text>
             ) : nextCursor ? (
