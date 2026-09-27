@@ -139,13 +139,13 @@ function AliasChip({alias, time, mine: _mine}: {alias: string; time?: string; mi
           <Text style={styles.alias} maxFontSizeMultiplier={1.35}>
             {alias}
           </Text>
+          {time ? (
+            <Text style={styles.timeLabel} maxFontSizeMultiplier={1.3}>
+              {time}
+            </Text>
+          ) : null}
         </View>
       </View>
-      {time ? (
-        <Text style={styles.timeLabel} maxFontSizeMultiplier={1.3}>
-          {time}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -184,10 +184,22 @@ function VoteButton({
       }}
       style={[styles.voteButton, compact && styles.voteButtonCompact]}>
       <Animated.View style={{transform: [{scale}]}}>
-        {icon === 'thumbs-up' || icon === 'thumbs-down' ? (
+        {icon === 'thumbs-up' || icon === 'thumbs-down' || icon === 'heart' ? (
           <MaterialCommunityIcons
-            name={active ? icon === 'thumbs-up' ? 'thumb-up' : 'thumb-down' : icon === 'thumbs-up' ? 'thumb-up-outline' : 'thumb-down-outline'}
-          size={compact ? 19 : 24}
+            name={
+              active
+                ? icon === 'thumbs-up'
+                  ? 'thumb-up'
+                  : icon === 'thumbs-down'
+                    ? 'thumb-down'
+                    : 'heart'
+                : icon === 'thumbs-up'
+                  ? 'thumb-up-outline'
+                  : icon === 'thumbs-down'
+                    ? 'thumb-down-outline'
+                    : 'heart-outline'
+            }
+            size={compact ? 19 : 24}
             color={active ? pastelColors.accent : pastelColors.auth.mutedText}
           />
         ) : (
@@ -720,6 +732,11 @@ export default function CommunityPostScreen() {
                   key={item.id}
                   onPressIn={() => setPressedCommentId(item.id)}
                   onPressOut={() => setPressedCommentId(null)}
+                  onPress={() => {
+                    if ((item.replies || []).length > 0) {
+                      setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}));
+                    }
+                  }}
                   onLongPress={() => setActiveCommentActions(item.id)}
                   delayLongPress={350}>
                   <AliasChip
@@ -731,15 +748,6 @@ export default function CommunityPostScreen() {
                     {item.text}
                   </Text>
                   <View style={styles.engagement}>
-                    <VoteButton
-                      icon="thumbs-up"
-                      count={item.likes || 0}
-                      active={item.likedByMe}
-                      label="Like comment"
-                      compact
-                      reduceMotion={reduceMotion}
-                      onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
-                    />
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Reply to comment"
@@ -747,6 +755,16 @@ export default function CommunityPostScreen() {
                       style={styles.replyAction}>
                       <Text style={styles.replyActionText}>Reply</Text>
                     </Pressable>
+                    <View style={styles.engagementSpacer} />
+                    <VoteButton
+                      icon="heart"
+                      count={item.likes || 0}
+                      active={item.likedByMe}
+                      label="Like comment"
+                      compact
+                      reduceMotion={reduceMotion}
+                      onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
+                    />
                     {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-down"
                       count={item.dislikes || 0}
@@ -773,7 +791,13 @@ export default function CommunityPostScreen() {
                   </View>
 
                   {progressiveCommentItems(item.replies || [], Boolean(expandedReplies[item.id]), 2).map(reply => (
-                    <View style={styles.reply} key={reply.id}>
+                    <Pressable
+                      style={[styles.reply, pressedCommentId === reply.id && styles.commentPressed]}
+                      key={reply.id}
+                      onPressIn={() => setPressedCommentId(reply.id)}
+                      onPressOut={() => setPressedCommentId(null)}
+                      onLongPress={() => setActiveCommentActions(reply.id)}
+                      delayLongPress={350}>
                       <AliasChip
                         alias={reply.alias}
                         mine={reply.mine}
@@ -781,8 +805,16 @@ export default function CommunityPostScreen() {
                       />
                       <Text style={styles.commentText}>{reply.text}</Text>
                       <View style={styles.engagement}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Reply to this reply"
+                          onPress={() => startReply(item, reply)}
+                          style={styles.replyAction}>
+                          <Text style={styles.replyActionText}>Reply</Text>
+                        </Pressable>
+                        <View style={styles.engagementSpacer} />
                         <VoteButton
-                          icon="thumbs-up"
+                          icon="heart"
                           count={reply.likes || 0}
                           active={reply.likedByMe}
                           label="Like reply"
@@ -792,13 +824,6 @@ export default function CommunityPostScreen() {
                             engage(reply, 'like', `${base}/comments/${item.id}/replies/${reply.id}/like`)
                           }
                         />
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Reply to this reply"
-                          onPress={() => startReply(item, reply)}
-                          style={styles.replyAction}>
-                          <Text style={styles.replyActionText}>Reply</Text>
-                        </Pressable>
                         {activeCommentActions === reply.id ? <VoteButton
                           icon="thumbs-down"
                           count={reply.dislikes || 0}
@@ -829,7 +854,7 @@ export default function CommunityPostScreen() {
                         </Pressable>
                         </> : null}
                       </View>
-                    </View>
+                    </Pressable>
                   ))}
 
                   {(item.replies || []).length > 2 ? (
@@ -1217,6 +1242,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  engagementSpacer: {flex: 1},
   voteButton: {
     minHeight: 44,
     minWidth: 44,
