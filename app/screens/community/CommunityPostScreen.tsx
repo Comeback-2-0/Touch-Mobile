@@ -732,6 +732,7 @@ export default function CommunityPostScreen() {
                   key={item.id}
                   onPressIn={() => setPressedCommentId(item.id)}
                   onPressOut={() => setPressedCommentId(null)}
+                  android_ripple={{color: pastelColors.auth.primaryOverlay}}
                   onPress={() => {
                     if ((item.replies || []).length > 0) {
                       setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}));
@@ -796,6 +797,7 @@ export default function CommunityPostScreen() {
                       key={reply.id}
                       onPressIn={() => setPressedCommentId(reply.id)}
                       onPressOut={() => setPressedCommentId(null)}
+                      android_ripple={{color: pastelColors.auth.primaryOverlay}}
                       onLongPress={() => setActiveCommentActions(reply.id)}
                       delayLongPress={350}>
                       <AliasChip
@@ -914,17 +916,25 @@ export default function CommunityPostScreen() {
                   </Pressable>
                 </View>
               ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Commenting as ${alias}. Edit name`}
-                  onPress={() => setAliasEditing(true)}
-                  style={styles.aliasTap}>
-                  <Text style={styles.aliasBarText}>
-                    Commenting as {alias || 'anonymous'}
-                  </Text>
-                  <Feather name="edit-2" size={16} color={pastelColors.accent} />
-                </Pressable>
+                <View style={styles.aliasHeaderRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Commenting as ${alias}. Edit name`}
+                    onPress={() => setAliasEditing(true)}
+                    style={styles.aliasTap}>
+                    <Text style={styles.aliasBarText}>
+                      Commenting as {alias || 'anonymous'}
+                    </Text>
+                    <Feather name="edit-2" size={16} color={pastelColors.accent} />
+                  </Pressable>
+                </View>
               )}
+              <Text
+                testID="comment-character-counter"
+                style={styles.counter}
+                accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
+                {comment.length}/{MAX_COMMENT_TEXT}
+              </Text>
               {aliasConflict ? <Text style={styles.aliasError}>{aliasConflict}</Text> : null}
             </View>
           ) : null}
@@ -958,12 +968,6 @@ export default function CommunityPostScreen() {
               maxLength={MAX_COMMENT_TEXT}
               maxFontSizeMultiplier={1.4}
             />
-            <Text
-              testID="comment-character-counter"
-              style={styles.counter}
-              accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
-              {comment.length}/{MAX_COMMENT_TEXT}
-            </Text>
             <View style={styles.composerMeta}>
               <Pressable
                 accessibilityRole="button"
@@ -1293,7 +1297,8 @@ const styles = StyleSheet.create({
     borderTopColor: pastelColors.auth.glassBorder,
   },
   aliasBar: {paddingHorizontal: 4, marginBottom: 6},
-  aliasTap: {flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32},
+  aliasHeaderRow: {flexDirection: 'row', alignItems: 'center', minHeight: 32},
+  aliasTap: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32},
   aliasBarText: {fontWeight: '800', color: pastelColors.auth.deepText},
   aliasEditRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
   aliasInput: {
@@ -1324,7 +1329,6 @@ const styles = StyleSheet.create({
   },
   replyingText: {flex: 1, fontWeight: '700', color: pastelColors.auth.mutedText, marginRight: 8},
   composer: {
-    position: 'relative',
     padding: 10,
     borderRadius: 16,
     backgroundColor: pastelColors.white,
@@ -1337,13 +1341,9 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     color: pastelColors.auth.deepText,
     paddingTop: 10,
-    paddingRight: 28,
   },
   composerMeta: {alignItems: 'center'},
   counter: {
-    position: 'absolute',
-    top: 10,
-    right: 14,
     fontSize: 10,
     fontWeight: '700',
     color: pastelColors.auth.mutedText,
