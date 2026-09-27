@@ -29,6 +29,8 @@ import CommunityPostCard from './CommunityPostCard';
 import CommunityConfirmSheet from './CommunityConfirmSheet';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import {useKeyboardHeight} from './communityKeyboard';
+import {io, Socket} from 'socket.io-client';
+import {API_URL} from '../../utils/api';
 import {
   MAX_ALIAS_LENGTH,
   MAX_COMMENT_TEXT,
@@ -282,6 +284,7 @@ export default function CommunityPostScreen() {
   const [expandedComments, setExpandedComments] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [activeCommentActions, setActiveCommentActions] = useState<string | null>(null);
+  const [replyTyping, setReplyTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [privateShareOpen, setPrivateShareOpen] = useState(false);
@@ -290,8 +293,54 @@ export default function CommunityPostScreen() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [reacting, setReacting] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insertOpacity = useRef(new Animated.Value(1)).current;
   const keyboardHeight = useKeyboardHeight();
+
+  useEffect(() => {
+    if (!communityId || !contentId) return;
+    const socket = io(API_URL, {transports: ['websocket'], autoConnect: true});
+    socketRef.current = socket;
+    socket.on('communityReplyTyping', (payload: {contentId?: string; commentId?: string; isTyping?: boolean}) => {
+      if (String(payload.contentId) !== String(contentId)) return;
+      if (replyingTo?.comment.id !== String(payload.commentId)) return;
+      setReplyTyping(Boolean(payload.isTyping));
+    });
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [communityId, contentId, replyingTo?.comment.id]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    const target = replyingTo?.comment;
+    if (!socket || !target || !communityId || !contentId) {
+      setReplyTyping(false);
+      return;
+    }
+    const payload = {communityId, contentId, commentId: target.id};
+    socket.emit('joinCommunityPostThread', payload);
+    return () => {
+      socket.emit('leaveCommunityPostThread', payload);
+      setReplyTyping(false);
+    };
+  }, [communityId, contentId, replyingTo?.comment.id]);
+
+  const handleCommentChange = (value: string) => {
+    setComment(value);
+    const socket = socketRef.current;
+    const target = replyingTo?.comment;
+    if (!socket || !target || !communityId || !contentId) return;
+    const payload = {communityId, contentId, commentId: target.id};
+    socket.emit('communityReplyTyping', {...payload, isTyping: Boolean(value.trim())});
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      socket.emit('communityReplyTyping', {...payload, isTyping: false});
+    }, 1500);
+  };
 
   useEffect(() => {
     if (!params.focusComment || loading || !post) return;
@@ -697,7 +746,8 @@ export default function CommunityPostScreen() {
                       reduceMotion={reduceMotion}
                       onPress={() => engage(item, 'dislike', `${base}/comments/${item.id}/dislike`)}
                     /> : null}
-                    {activeCommentActions === item.id ? <Pressable
+                    {activeCommentActions === item.id ? <>
+                    <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Reply to comment"
                       onPress={() => startReply(item)}
@@ -715,7 +765,8 @@ export default function CommunityPostScreen() {
                       style={styles.moreAction}
                       accessibilityLabel="Report comment">
                       <Feather name="flag" size={22} color={pastelColors.auth.mutedText} />
-                    </Pressable> : null}
+                    </Pressable>
+                    </> : null}
                   </View>
 
                   {progressiveCommentItems(item.replies || [], Boolean(expandedReplies[item.id]), 2).map(reply => (
@@ -757,7 +808,8 @@ export default function CommunityPostScreen() {
                             )
                           }
                         /> : null}
-                        {activeCommentActions === reply.id ? <Pressable
+                        {activeCommentActions === reply.id ? <>
+                        <Pressable
                           accessibilityRole="button"
                           accessibilityLabel="Reply to this reply"
                           onPress={() => startReply(item, reply)}
@@ -775,7 +827,8 @@ export default function CommunityPostScreen() {
                           style={styles.moreAction}
                           accessibilityLabel="Report reply">
                           <Feather name="flag" size={22} color={pastelColors.auth.mutedText} />
-                        </Pressable> : null}
+                        </Pressable>
+                        </> : null}
                       </View>
                     </View>
                   ))}
@@ -862,12 +915,13 @@ export default function CommunityPostScreen() {
               </Pressable>
             </View>
           ) : null}
+          {replyTyping ? <Text style={styles.typingIndicator}>Someone is typing a reply…</Text> : null}
 
           <View style={styles.composer}>
             <TextInput
               ref={inputRef}
               value={comment}
-              onChangeText={setComment}
+              onChangeText={handleCommentChange}
               onFocus={() => setComposerFocused(true)}
               onBlur={() => setComposerFocused(false)}
               placeholder={
@@ -1229,6 +1283,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  typingIndicator: {
+    marginHorizontal: 16,
+    marginBottom: 6,
+    color: pastelColors.accent,
+    fontSize: 12,
+    fontWeight: '800',
   },
   replyingText: {flex: 1, fontWeight: '700', color: pastelColors.auth.mutedText, marginRight: 8},
   composer: {
