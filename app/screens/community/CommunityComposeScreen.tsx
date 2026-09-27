@@ -26,6 +26,7 @@ import {
   MAX_ALIAS_LENGTH,
   MIN_ALIAS_LENGTH,
   showCommunityToast,
+  suggestCommunityAlias,
 } from './communityUx';
 import {useKeyboardAwareScroll} from './communityKeyboard';
 
@@ -37,16 +38,12 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 30;
 
-function suggestAlias() {
-  return `anon-${Math.random().toString(16).slice(2, 8)}`;
-}
-
 export default function CommunityComposeScreen() {
   const navigation = useNavigation<Navigation>();
   const {
     params: {community},
   } = useRoute<Route>();
-  const [alias, setAlias] = useState(suggestAlias);
+  const [alias, setAlias] = useState(suggestCommunityAlias);
   const [text, setText] = useState('');
   const [media, setMedia] = useState<any>(null);
   const [sending, setSending] = useState(false);

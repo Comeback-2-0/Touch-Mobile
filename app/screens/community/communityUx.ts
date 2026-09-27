@@ -9,6 +9,14 @@ export const MIN_ALIAS_LENGTH = 2;
 export type JoinMode = 'open' | 'approval' | 'invite-only';
 export type ContentVisibility = 'public' | 'members';
 export const COMMUNITY_CREATION_JOIN_MODES: JoinMode[] = ['open', 'approval'];
+const ALIAS_ADJECTIVES = ['Quiet', 'Kind', 'Brave', 'Gentle', 'Calm', 'Bright', 'Hidden', 'Mellow', 'Curious', 'Silver', 'Warm', 'Clever', 'Soft', 'Steady', 'Lucky', 'Blue'];
+const ALIAS_NOUNS = ['Owl', 'Fox', 'Moth', 'Kite', 'Fern', 'Wave', 'Ember', 'Moss', 'Lantern', 'Rain', 'Robin', 'Panda', 'Comet', 'Willow', 'Pebble', 'Dawn'];
+
+export function suggestCommunityAlias() {
+  const adjective = ALIAS_ADJECTIVES[Math.floor(Math.random() * ALIAS_ADJECTIVES.length)];
+  const noun = ALIAS_NOUNS[Math.floor(Math.random() * ALIAS_NOUNS.length)];
+  return `${adjective} ${noun}`;
+}
 
 export function communityVisitorActions(
   community: {contentVisibility?: string; joinMode?: string},
