@@ -17,7 +17,7 @@ export async function registerNotificationDevice() {
   if (!enabled) return null;
   const token = await messaging().getToken();
   if (!token) return null;
-  await api.post('/notifications/devices', {token, platform: Platform.OS, appVersion: '2.0.0'});
+  await api.post('/notifications/devices', {token, platform: Platform.OS, appVersion: '2.3.0'});
   return token;
 }
 
@@ -26,7 +26,7 @@ export async function registerNotificationToken(token: string) {
   await api.post('/notifications/devices', {
     token,
     platform: Platform.OS,
-    appVersion: '2.0.0',
+    appVersion: '2.3.0',
   });
 }
 
