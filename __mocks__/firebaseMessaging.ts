@@ -1,5 +1,6 @@
 const messaging = () => ({
   requestPermission: async () => 1,
+  hasPermission: async () => 1,
   getToken: async () => '',
   onTokenRefresh: () => () => undefined,
   onNotificationOpenedApp: () => () => undefined,

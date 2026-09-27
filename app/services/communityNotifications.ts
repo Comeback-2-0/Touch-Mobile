@@ -1,9 +1,18 @@
 import messaging from '@react-native-firebase/messaging';
 import {Platform} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {api} from '../utils/api';
 
+const NOTIFICATION_PERMISSION_REQUESTED = 'touch.notification_permission_requested.v1';
+
 export async function registerNotificationDevice() {
-  const authorization = await messaging().requestPermission();
+  const alreadyRequested = await AsyncStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED);
+  const authorization = alreadyRequested === '1'
+    ? await messaging().hasPermission()
+    : await messaging().requestPermission();
+  if (alreadyRequested !== '1') {
+    await AsyncStorage.setItem(NOTIFICATION_PERMISSION_REQUESTED, '1');
+  }
   const enabled = authorization === messaging.AuthorizationStatus.AUTHORIZED || authorization === messaging.AuthorizationStatus.PROVISIONAL;
   if (!enabled) return null;
   const token = await messaging().getToken();
