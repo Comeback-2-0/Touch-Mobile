@@ -9,6 +9,22 @@ export const MIN_ALIAS_LENGTH = 2;
 export type JoinMode = 'open' | 'approval' | 'invite-only';
 export type ContentVisibility = 'public' | 'members';
 
+export function communityVisitorActions(
+  community: {contentVisibility?: string; joinMode?: string},
+  membership?: {status?: string} | null,
+) {
+  const joined = membership?.status === 'active';
+  const canRead = community.contentVisibility !== 'members' || joined;
+  return {
+    canRead,
+    canJoin: !joined && community.joinMode !== 'invite-only',
+    canInteract: joined,
+    showJoinButton: !joined,
+    showMemberActions: joined,
+    queueVisible: joined,
+  };
+}
+
 export function joinModeLabel(mode?: string) {
   if (mode === 'approval') return 'Approval';
   if (mode === 'invite-only') return 'Invite';

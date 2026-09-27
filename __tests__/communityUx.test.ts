@@ -4,6 +4,7 @@ import {
   countThreadComments,
   membersCopy,
   sortCommentsForThread,
+  communityVisitorActions,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
@@ -30,6 +31,28 @@ describe('community comment helpers', () => {
 });
 
 describe('community browse copy', () => {
+  it('keeps public feeds readable while gating visitor interactions', () => {
+    expect(communityVisitorActions({contentVisibility: 'public', joinMode: 'open'}, null)).toEqual({
+      canRead: true,
+      canJoin: true,
+      canInteract: false,
+      showJoinButton: true,
+      showMemberActions: false,
+      queueVisible: false,
+    });
+  });
+
+  it('enables all actions after joining an open public community', () => {
+    expect(communityVisitorActions({contentVisibility: 'public', joinMode: 'open'}, {status: 'active'})).toEqual({
+      canRead: true,
+      canJoin: false,
+      canInteract: true,
+      showJoinButton: false,
+      showMemberActions: true,
+      queueVisible: true,
+    });
+  });
+
   it('compacts large member counts', () => {
     expect(membersCopy(1)).toBe('1 member');
     expect(membersCopy(42)).toBe('42 members');

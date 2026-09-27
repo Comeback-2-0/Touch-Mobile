@@ -360,6 +360,10 @@ export default function CommunityHomeScreen() {
   };
 
   const engagePost = async (postId: string, action: 'like' | 'dislike') => {
+    if (!joined) {
+      showCommunityToast('Join the community to interact.');
+      return;
+    }
     try {
       const response = await api.post(`/communities/${id}/content/${postId}/${action}`);
       const next = response.data?.post;
@@ -520,6 +524,15 @@ export default function CommunityHomeScreen() {
           </Text>
         </Pressable>
         <View style={styles.actions}>
+          {!joined && community?.contentVisibility === 'public' && community?.joinMode === 'open' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Join community"
+              onPress={openJoinFlow}
+              style={styles.joinHeaderButton}>
+              <Text style={styles.joinHeaderText}>Join</Text>
+            </Pressable>
+          ) : null}
           {joined ? (
             <Pressable
               accessibilityRole="button"
@@ -587,7 +600,6 @@ export default function CommunityHomeScreen() {
         }
         renderItem={({item}) => (
           <Pressable
-              onPress={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
             style={styles.card}>
             <CommunityPostCard
               compact
@@ -618,8 +630,14 @@ export default function CommunityHomeScreen() {
                 editable={false}
                 placeholder="Write a comment..."
                 placeholderTextColor={pastelColors.auth.mutedText}
-                onFocus={() => navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true})}
-                onPressIn={() => navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true})}
+                onFocus={() => {
+                  if (!joined) return showCommunityToast('Join the community to interact.');
+                  navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
+                }}
+                onPressIn={() => {
+                  if (!joined) return showCommunityToast('Join the community to interact.');
+                  navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
+                }}
                 style={styles.commentInput}
               />
             </View>
@@ -747,6 +765,15 @@ const styles = StyleSheet.create({
   head: {flexShrink: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: pastelColors.auth.deepText},
   headButton: {flex: 1, minWidth: 0, paddingVertical: 8},
   iconButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
+  joinHeaderButton: {
+    minHeight: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: pastelColors.accent,
+  },
+  joinHeaderText: {color: pastelColors.white, fontWeight: '900'},
   backButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -10},
   actions: {flexDirection: 'row', alignItems: 'center', gap: 2},
   headerAction: {

@@ -264,6 +264,7 @@ export default function CommunityPostScreen() {
   const blockCommunity = useBlockedCommunitiesStore(state => state.block);
 
   const [post, setPost] = useState<any>();
+  const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [comment, setComment] = useState('');
@@ -303,10 +304,9 @@ export default function CommunityPostScreen() {
     setLoading(true);
     setError('');
     try {
-      if (!params.community) {
-        const info = await api.get(`/communities/${communityId}`);
-        if (info.data.community) setCommunity(info.data.community);
-      }
+      const info = await api.get(`/communities/${communityId}`);
+      if (info.data.community) setCommunity(info.data.community);
+      setJoined(info.data.membership?.status === 'active');
       const response = await api.get(`${base}`);
       setPost(response.data.post);
       if (response.data.post?.viewerAlias) setAlias(response.data.post.viewerAlias);
@@ -353,6 +353,10 @@ export default function CommunityPostScreen() {
   );
 
   const react = async (value: string) => {
+    if (!joined) {
+      showCommunityToast('Join the community to interact.');
+      return;
+    }
     if (reacting) return;
     const previous = post?.likedByMe ? 'like' : post?.dislikedByMe ? 'dislike' : '';
     const nextValue = previous === value ? '' : value;
@@ -385,6 +389,10 @@ export default function CommunityPostScreen() {
   };
 
   const sendComment = async () => {
+    if (!joined) {
+      showCommunityToast('Join the community to interact.');
+      return;
+    }
     if (!comment.trim() || sending || aliasConflict) return;
     setSending(true);
     try {
