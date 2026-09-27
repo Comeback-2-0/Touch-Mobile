@@ -44,6 +44,10 @@ export function joinModeLabel(mode?: string) {
   return 'Open';
 }
 
+export function communityJoinActionLabel(community: {joinMode?: string}) {
+  return community.joinMode === 'approval' ? 'Request to join' : 'Join';
+}
+
 export function visibilityLabel(visibility?: string) {
   return visibility === 'members' ? 'Members-only' : 'Public';
 }

@@ -8,6 +8,7 @@ import {
   COMMUNITY_CREATION_JOIN_MODES,
   suggestCommunityAlias,
   progressiveCommentItems,
+  communityJoinActionLabel,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
@@ -57,6 +58,10 @@ describe('community browse copy', () => {
       showMemberActions: false,
       queueVisible: false,
     });
+  });
+
+  it('labels approval-only visitors with a request action', () => {
+    expect(communityJoinActionLabel({joinMode: 'approval'})).toBe('Request to join');
   });
 
   it('enables all actions after joining an open public community', () => {

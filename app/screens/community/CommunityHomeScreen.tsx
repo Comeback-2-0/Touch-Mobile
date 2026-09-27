@@ -24,6 +24,7 @@ import CommunityConfirmSheet from './CommunityConfirmSheet';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import {
   communityErrorCopy,
+  communityJoinActionLabel,
   joinModeLabel,
   leaveConsequenceCopy,
   membersCopy,
@@ -523,13 +524,13 @@ export default function CommunityHomeScreen() {
           </Text>
         </Pressable>
         <View style={styles.actions}>
-          {!joined && community?.contentVisibility === 'public' && community?.joinMode === 'open' ? (
+          {!joined && community?.contentVisibility === 'public' && community?.joinMode !== 'invite-only' ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Join community"
+              accessibilityLabel={communityJoinActionLabel(community)}
               onPress={openJoinFlow}
               style={styles.joinHeaderButton}>
-              <Text style={styles.joinHeaderText}>Join</Text>
+              <Text style={styles.joinHeaderText}>{communityJoinActionLabel(community)}</Text>
             </Pressable>
           ) : null}
           {joined ? (
