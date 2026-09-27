@@ -82,7 +82,7 @@ function AnimatedChoice({
 }
 
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
-type JoinMode = 'open' | 'approval' | 'invite-only';
+type JoinMode = 'open' | 'approval';
 type Visibility = 'public' | 'members';
 type Step = 0 | 1 | 2 | 3;
 
@@ -92,11 +92,6 @@ const joinOptions: Array<{value: JoinMode; title: string; copy: string}> = [
     value: 'approval',
     title: 'Approval',
     copy: 'People request access with an alias or username reveal.',
-  },
-  {
-    value: 'invite-only',
-    title: 'Invite only',
-    copy: 'Only people with a valid code can join.',
   },
 ];
 

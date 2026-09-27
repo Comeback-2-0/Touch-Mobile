@@ -5,6 +5,7 @@ import {
   membersCopy,
   sortCommentsForThread,
   communityVisitorActions,
+  COMMUNITY_CREATION_JOIN_MODES,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
@@ -31,6 +32,10 @@ describe('community comment helpers', () => {
 });
 
 describe('community browse copy', () => {
+  it('offers only open and approval join modes when creating a community', () => {
+    expect(COMMUNITY_CREATION_JOIN_MODES).toEqual(['open', 'approval']);
+    expect(COMMUNITY_CREATION_JOIN_MODES).not.toContain('invite-only');
+  });
   it('keeps public feeds readable while gating visitor interactions', () => {
     expect(communityVisitorActions({contentVisibility: 'public', joinMode: 'open'}, null)).toEqual({
       canRead: true,

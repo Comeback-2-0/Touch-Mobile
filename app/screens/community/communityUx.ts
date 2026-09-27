@@ -8,6 +8,7 @@ export const MIN_ALIAS_LENGTH = 2;
 
 export type JoinMode = 'open' | 'approval' | 'invite-only';
 export type ContentVisibility = 'public' | 'members';
+export const COMMUNITY_CREATION_JOIN_MODES: JoinMode[] = ['open', 'approval'];
 
 export function communityVisitorActions(
   community: {contentVisibility?: string; joinMode?: string},
