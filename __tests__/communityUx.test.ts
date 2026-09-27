@@ -7,6 +7,7 @@ import {
   communityVisitorActions,
   COMMUNITY_CREATION_JOIN_MODES,
   suggestCommunityAlias,
+  progressiveCommentItems,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
@@ -40,6 +41,12 @@ describe('community browse copy', () => {
 
   it('suggests readable post aliases instead of hex identifiers', () => {
     expect(suggestCommunityAlias()).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
+  });
+
+  it('progressively discloses comments instead of rendering the whole thread', () => {
+    const comments = ['one', 'two', 'three', 'four'];
+    expect(progressiveCommentItems(comments, false)).toEqual(['one', 'two', 'three']);
+    expect(progressiveCommentItems(comments, true)).toEqual(comments);
   });
   it('keeps public feeds readable while gating visitor interactions', () => {
     expect(communityVisitorActions({contentVisibility: 'public', joinMode: 'open'}, null)).toEqual({

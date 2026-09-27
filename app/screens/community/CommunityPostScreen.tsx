@@ -39,6 +39,7 @@ import {
   formatRelativeTime,
   showCommunityToast,
   sortCommentsForThread,
+  progressiveCommentItems,
 } from './communityUx';
 
 type Route = RouteProp<CommunityStackParamList, 'CommunityPost'>;
@@ -278,6 +279,9 @@ export default function CommunityPostScreen() {
   const [reportTarget, setReportTarget] = useState<{path: string; label: string} | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{comment: Comment; reply?: Reply} | null>(null);
+  const [expandedComments, setExpandedComments] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
+  const [activeCommentActions, setActiveCommentActions] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [privateShareOpen, setPrivateShareOpen] = useState(false);
@@ -339,6 +343,7 @@ export default function CommunityPostScreen() {
     () => sortCommentsForThread(post?.comments || [], sort),
     [post, sort],
   );
+  const visibleComments = progressiveCommentItems(comments, expandedComments);
   const commentCount = Number(post?.commentsCount ?? countThreadComments(comments));
   const aliasConflict = aliasConflictOnPost(alias, post);
   const showAliasBar = composerFocused || Boolean(comment.trim()) || aliasEditing;
@@ -659,8 +664,12 @@ export default function CommunityPostScreen() {
             </View>
           ) : (
             <Animated.View style={{opacity: insertOpacity}}>
-              {comments.map(item => (
-                <View style={styles.comment} key={item.id}>
+              {visibleComments.map(item => (
+                <Pressable
+                  style={styles.comment}
+                  key={item.id}
+                  onLongPress={() => setActiveCommentActions(item.id)}
+                  delayLongPress={350}>
                   <AliasChip
                     alias={item.alias}
                     mine={item.mine}
@@ -670,7 +679,7 @@ export default function CommunityPostScreen() {
                     {item.text}
                   </Text>
                   <View style={styles.engagement}>
-                    <VoteButton
+                    {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-up"
                       count={item.likes || 0}
                       active={item.likedByMe}
@@ -678,8 +687,8 @@ export default function CommunityPostScreen() {
                       compact
                       reduceMotion={reduceMotion}
                       onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
-                    />
-                    <VoteButton
+                    /> : null}
+                    {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-down"
                       count={item.dislikes || 0}
                       active={item.dislikedByMe}
@@ -687,8 +696,8 @@ export default function CommunityPostScreen() {
                       compact
                       reduceMotion={reduceMotion}
                       onPress={() => engage(item, 'dislike', `${base}/comments/${item.id}/dislike`)}
-                    />
-                    <Pressable
+                    /> : null}
+                    {activeCommentActions === item.id ? <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Reply to comment"
                       onPress={() => startReply(item)}
@@ -706,10 +715,10 @@ export default function CommunityPostScreen() {
                       style={styles.moreAction}
                       accessibilityLabel="Report comment">
                       <Feather name="flag" size={22} color={pastelColors.auth.mutedText} />
-                    </Pressable>
+                    </Pressable> : null}
                   </View>
 
-                  {(item.replies || []).map(reply => (
+                  {progressiveCommentItems(item.replies || [], Boolean(expandedReplies[item.id]), 2).map(reply => (
                     <View style={styles.reply} key={reply.id}>
                       <AliasChip
                         alias={reply.alias}
@@ -718,7 +727,7 @@ export default function CommunityPostScreen() {
                       />
                       <Text style={styles.commentText}>{reply.text}</Text>
                       <View style={styles.engagement}>
-                        <VoteButton
+                        {activeCommentActions === reply.id ? <VoteButton
                           icon="thumbs-up"
                           count={reply.likes || 0}
                           active={reply.likedByMe}
@@ -732,8 +741,8 @@ export default function CommunityPostScreen() {
                               `${base}/comments/${item.id}/replies/${reply.id}/like`,
                             )
                           }
-                        />
-                        <VoteButton
+                        /> : null}
+                        {activeCommentActions === reply.id ? <VoteButton
                           icon="thumbs-down"
                           count={reply.dislikes || 0}
                           active={reply.dislikedByMe}
@@ -747,8 +756,8 @@ export default function CommunityPostScreen() {
                               `${base}/comments/${item.id}/replies/${reply.id}/dislike`,
                             )
                           }
-                        />
-                        <Pressable
+                        /> : null}
+                        {activeCommentActions === reply.id ? <Pressable
                           accessibilityRole="button"
                           accessibilityLabel="Reply to this reply"
                           onPress={() => startReply(item, reply)}
@@ -766,10 +775,21 @@ export default function CommunityPostScreen() {
                           style={styles.moreAction}
                           accessibilityLabel="Report reply">
                           <Feather name="flag" size={22} color={pastelColors.auth.mutedText} />
-                        </Pressable>
+                        </Pressable> : null}
                       </View>
                     </View>
                   ))}
+
+                  {(item.replies || []).length > 2 ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}))}
+                      style={styles.showRepliesButton}>
+                      <Text style={styles.showRepliesText}>
+                        {expandedReplies[item.id] ? 'Hide replies' : `View ${(item.replies || []).length} replies`}
+                      </Text>
+                    </Pressable>
+                  ) : null}
 
                   {replyingTo?.comment.id === item.id ? (
                     <View style={styles.quotedReply}>
@@ -781,8 +801,15 @@ export default function CommunityPostScreen() {
                       </Text>
                     </View>
                   ) : null}
-                </View>
+                </Pressable>
               ))}
+              {comments.length > 3 ? (
+                <Pressable onPress={() => setExpandedComments(current => !current)} style={styles.showRepliesButton}>
+                  <Text style={styles.showRepliesText}>
+                    {expandedComments ? 'Show fewer comments' : `Show ${comments.length - 3} more comments`}
+                  </Text>
+                </Pressable>
+              ) : null}
             </Animated.View>
           )}
         </ScrollView>
@@ -1167,6 +1194,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: pastelColors.auth.primaryOverlay,
   },
+  showRepliesButton: {alignSelf: 'flex-start', marginTop: 8, paddingVertical: 6, paddingHorizontal: 2},
+  showRepliesText: {fontWeight: '900', color: pastelColors.accent, fontSize: 12},
   quotedLabel: {fontWeight: '800', color: pastelColors.accent, fontSize: 12},
   quotedText: {marginTop: 4, color: pastelColors.auth.deepText, fontWeight: '600'},
   actionActive: {fontWeight: '900', color: pastelColors.accent},

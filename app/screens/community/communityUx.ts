@@ -18,6 +18,10 @@ export function suggestCommunityAlias() {
   return `${adjective} ${noun}`;
 }
 
+export function progressiveCommentItems<T>(items: T[], expanded: boolean, initialCount = 3) {
+  return expanded ? items : items.slice(0, initialCount);
+}
+
 export function communityVisitorActions(
   community: {contentVisibility?: string; joinMode?: string},
   membership?: {status?: string} | null,
