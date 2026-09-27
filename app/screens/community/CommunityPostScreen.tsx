@@ -740,6 +740,13 @@ export default function CommunityPostScreen() {
                       reduceMotion={reduceMotion}
                       onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
                     />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Reply to comment"
+                      onPress={() => startReply(item)}
+                      style={styles.replyAction}>
+                      <Text style={styles.replyActionText}>Reply</Text>
+                    </Pressable>
                     {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-down"
                       count={item.dislikes || 0}
@@ -750,13 +757,6 @@ export default function CommunityPostScreen() {
                       onPress={() => engage(item, 'dislike', `${base}/comments/${item.id}/dislike`)}
                     /> : null}
                     {activeCommentActions === item.id ? <>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Reply to comment"
-                      onPress={() => startReply(item)}
-                      style={styles.replyAction}>
-                      <Text style={styles.replyActionText}>Reply</Text>
-                    </Pressable>
                     <Pressable
                       onPress={() => {
                         setReportTarget({
@@ -781,21 +781,24 @@ export default function CommunityPostScreen() {
                       />
                       <Text style={styles.commentText}>{reply.text}</Text>
                       <View style={styles.engagement}>
-                        {activeCommentActions === reply.id ? <VoteButton
+                        <VoteButton
                           icon="thumbs-up"
                           count={reply.likes || 0}
                           active={reply.likedByMe}
-                        label="Like reply"
-                        compact
+                          label="Like reply"
+                          compact
                           reduceMotion={reduceMotion}
                           onPress={() =>
-                            engage(
-                              reply,
-                              'like',
-                              `${base}/comments/${item.id}/replies/${reply.id}/like`,
-                            )
+                            engage(reply, 'like', `${base}/comments/${item.id}/replies/${reply.id}/like`)
                           }
-                        /> : null}
+                        />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Reply to this reply"
+                          onPress={() => startReply(item, reply)}
+                          style={styles.replyAction}>
+                          <Text style={styles.replyActionText}>Reply</Text>
+                        </Pressable>
                         {activeCommentActions === reply.id ? <VoteButton
                           icon="thumbs-down"
                           count={reply.dislikes || 0}
@@ -812,13 +815,6 @@ export default function CommunityPostScreen() {
                           }
                         /> : null}
                         {activeCommentActions === reply.id ? <>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Reply to this reply"
-                          onPress={() => startReply(item, reply)}
-                          style={styles.replyAction}>
-                          <Text style={styles.replyActionText}>Reply</Text>
-                        </Pressable>
                         <Pressable
                           onPress={() => {
                             setReportTarget({
@@ -1216,6 +1212,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   voteButton: {
     minHeight: 44,
