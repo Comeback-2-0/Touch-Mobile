@@ -284,6 +284,7 @@ export default function CommunityPostScreen() {
   const [expandedComments, setExpandedComments] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [activeCommentActions, setActiveCommentActions] = useState<string | null>(null);
+  const [pressedCommentId, setPressedCommentId] = useState<string | null>(null);
   const [replyTyping, setReplyTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -715,8 +716,10 @@ export default function CommunityPostScreen() {
             <Animated.View style={{opacity: insertOpacity}}>
               {visibleComments.map(item => (
                 <Pressable
-                  style={styles.comment}
+                  style={[styles.comment, pressedCommentId === item.id && styles.commentPressed]}
                   key={item.id}
+                  onPressIn={() => setPressedCommentId(item.id)}
+                  onPressOut={() => setPressedCommentId(null)}
                   onLongPress={() => setActiveCommentActions(item.id)}
                   delayLongPress={350}>
                   <AliasChip
@@ -728,7 +731,7 @@ export default function CommunityPostScreen() {
                     {item.text}
                   </Text>
                   <View style={styles.engagement}>
-                    {activeCommentActions === item.id ? <VoteButton
+                    <VoteButton
                       icon="thumbs-up"
                       count={item.likes || 0}
                       active={item.likedByMe}
@@ -736,7 +739,7 @@ export default function CommunityPostScreen() {
                       compact
                       reduceMotion={reduceMotion}
                       onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
-                    /> : null}
+                    />
                     {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-down"
                       count={item.dislikes || 0}
@@ -752,7 +755,7 @@ export default function CommunityPostScreen() {
                       accessibilityLabel="Reply to comment"
                       onPress={() => startReply(item)}
                       style={styles.replyAction}>
-                      <Feather name="corner-up-left" size={24} color={pastelColors.auth.mutedText} />
+                      <Text style={styles.replyActionText}>Reply</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => {
@@ -814,7 +817,7 @@ export default function CommunityPostScreen() {
                           accessibilityLabel="Reply to this reply"
                           onPress={() => startReply(item, reply)}
                           style={styles.replyAction}>
-                          <Feather name="corner-up-left" size={24} color={pastelColors.auth.mutedText} />
+                          <Text style={styles.replyActionText}>Reply</Text>
                         </Pressable>
                         <Pressable
                           onPress={() => {
@@ -1151,7 +1154,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniAvatarText: {fontWeight: '900', color: pastelColors.auth.deepText, fontSize: 12},
-  alias: {fontWeight: '900', color: pastelColors.accent},
+  alias: {fontWeight: '800', color: pastelColors.accent, fontSize: 12},
   youChip: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1203,11 +1206,12 @@ const styles = StyleSheet.create({
   emptyCopy: {color: pastelColors.auth.mutedText, fontWeight: '700', textAlign: 'center'},
   comment: {
     marginTop: 8,
-    padding: 14,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 8,
     backgroundColor: pastelColors.white,
   },
-  commentText: {marginTop: 8, color: pastelColors.auth.deepText, lineHeight: 20},
+  commentPressed: {backgroundColor: pastelColors.auth.glassSurface},
+  commentText: {marginTop: 5, color: pastelColors.auth.deepText, lineHeight: 20, fontSize: 15, fontWeight: '700'},
   engagement: {
     marginTop: 8,
     flexDirection: 'row',
@@ -1225,7 +1229,8 @@ const styles = StyleSheet.create({
   voteButtonCompact: {minHeight: 34, minWidth: 34, paddingHorizontal: 3, gap: 3},
   voteCountCompact: {fontSize: 11},
   voteCountActive: {color: pastelColors.accent},
-  replyAction: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
+  replyAction: {minHeight: 34, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center'},
+  replyActionText: {fontSize: 12, fontWeight: '900', color: pastelColors.auth.mutedText},
   moreAction: {
     marginLeft: 'auto',
     height: 44,
@@ -1234,10 +1239,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   reply: {
-    marginTop: 10,
+    marginTop: 6,
     marginLeft: 16,
-    padding: 12,
-    borderRadius: 14,
+    padding: 8,
+    borderRadius: 10,
     borderLeftWidth: 2,
     borderLeftColor: pastelColors.auth.glassBorder,
     backgroundColor: pastelColors.auth.glassSurface,
