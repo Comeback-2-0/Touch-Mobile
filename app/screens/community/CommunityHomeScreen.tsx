@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -625,21 +624,16 @@ export default function CommunityHomeScreen() {
                 <MaterialCommunityIcons name={item.dislikedByMe ? 'thumb-down' : 'thumb-down-outline'} size={19} color={item.dislikedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
                 <Text style={styles.feedActionText}>{Number(item.dislikes || 0)}</Text>
               </Pressable>
-              <TextInput
+              <Pressable
+                accessibilityRole="button"
                 accessibilityLabel="Write a comment"
-                editable={false}
-                placeholder="Write a comment..."
-                placeholderTextColor={pastelColors.auth.mutedText}
-                onFocus={() => {
+                onPress={() => {
                   if (!joined) return showCommunityToast('Join the community to interact.');
                   navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
                 }}
-                onPressIn={() => {
-                  if (!joined) return showCommunityToast('Join the community to interact.');
-                  navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
-                }}
-                style={styles.commentInput}
-              />
+                style={styles.commentInput}>
+                <Text style={styles.commentPlaceholder}>Write a comment...</Text>
+              </Pressable>
             </View>
           </Pressable>
         )}
@@ -972,9 +966,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 18,
     backgroundColor: pastelColors.auth.background,
-    color: pastelColors.auth.deepText,
-    fontSize: 12,
+    justifyContent: 'center',
   },
+  commentPlaceholder: {color: pastelColors.auth.mutedText, fontSize: 12},
   feedMeta: {color: pastelColors.auth.mutedText, fontWeight: '700', fontSize: 12},
   meta: {
     paddingHorizontal: 14,
