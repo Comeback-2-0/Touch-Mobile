@@ -933,10 +933,13 @@ export default function CommunityPostScreen() {
               maxLength={MAX_COMMENT_TEXT}
               maxFontSizeMultiplier={1.4}
             />
+            <Text
+              testID="comment-character-counter"
+              style={styles.counter}
+              accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
+              {comment.length}/{MAX_COMMENT_TEXT}
+            </Text>
             <View style={styles.composerMeta}>
-              <Text style={styles.counter}>
-                {comment.length}/{MAX_COMMENT_TEXT}
-              </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Send comment"
@@ -1295,6 +1298,7 @@ const styles = StyleSheet.create({
   },
   replyingText: {flex: 1, fontWeight: '700', color: pastelColors.auth.mutedText, marginRight: 8},
   composer: {
+    position: 'relative',
     padding: 10,
     borderRadius: 16,
     backgroundColor: pastelColors.white,
@@ -1307,9 +1311,17 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     color: pastelColors.auth.deepText,
     paddingTop: 10,
+    paddingRight: 28,
   },
-  composerMeta: {alignItems: 'flex-end'},
-  counter: {fontSize: 10, fontWeight: '700', color: pastelColors.auth.mutedText},
+  composerMeta: {alignItems: 'center'},
+  counter: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    fontSize: 10,
+    fontWeight: '700',
+    color: pastelColors.auth.mutedText,
+  },
   sendButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
   skeletonCard: {
     padding: 16,
