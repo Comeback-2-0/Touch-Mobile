@@ -5,10 +5,12 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Linking,
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -158,6 +160,8 @@ function VoteButton({
   onPress,
   reduceMotion,
   compact = false,
+  vertical = false,
+  hideZeroCount = false,
 }: {
   icon: string;
   count: number;
@@ -166,6 +170,8 @@ function VoteButton({
   onPress: () => void;
   reduceMotion: boolean;
   compact?: boolean;
+  vertical?: boolean;
+  hideZeroCount?: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   return (
@@ -182,7 +188,7 @@ function VoteButton({
         }
         onPress();
       }}
-      style={[styles.voteButton, compact && styles.voteButtonCompact]}>
+      style={[styles.voteButton, compact && styles.voteButtonCompact, vertical && styles.voteButtonVertical]}>
       <Animated.View style={{transform: [{scale}]}}>
         {icon === 'thumbs-up' || icon === 'thumbs-down' || icon === 'heart' ? (
           <MaterialCommunityIcons
@@ -206,7 +212,11 @@ function VoteButton({
           <Feather name={icon} size={compact ? 19 : 24} color={active ? pastelColors.accent : pastelColors.auth.mutedText} />
         )}
       </Animated.View>
-      <Text style={[styles.voteCount, compact && styles.voteCountCompact, active && styles.voteCountActive]}>{count}</Text>
+      {!(hideZeroCount && count === 0) ? (
+        <Text style={[styles.voteCount, compact && styles.voteCountCompact, active && styles.voteCountActive]}>
+          {count}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -286,14 +296,16 @@ export default function CommunityPostScreen() {
   const [alias, setAlias] = useState('');
   const [aliasEditing, setAliasEditing] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
-  const [sort, setSort] = useState<'time' | 'top'>('time');
+  const [sort, setSort] = useState<'time' | 'latest' | 'top'>('top');
+  const [topOrderIds, setTopOrderIds] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('harassment');
   const [reportContext, setReportContext] = useState('');
   const [reportTarget, setReportTarget] = useState<{path: string; label: string} | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{comment: Comment; reply?: Reply} | null>(null);
-  const [expandedComments, setExpandedComments] = useState(false);
+  const [visibleCommentCount, setVisibleCommentCount] = useState(50);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [activeCommentActions, setActiveCommentActions] = useState<string | null>(null);
   const [pressedCommentId, setPressedCommentId] = useState<string | null>(null);
@@ -361,6 +373,12 @@ export default function CommunityPostScreen() {
     return () => clearTimeout(timer);
   }, [loading, params.focusComment, post]);
 
+  useEffect(() => {
+    if (!replyingTo) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 120);
+    return () => clearTimeout(timer);
+  }, [replyingTo?.comment.id, replyingTo?.reply?.id]);
+
   const load = useCallback(async () => {
     if (!communityId || !contentId) {
       setError('This post is unavailable.');
@@ -401,15 +419,48 @@ export default function CommunityPostScreen() {
     return () => sub?.remove?.();
   }, []);
 
-  const comments: Comment[] = useMemo(
-    () => sortCommentsForThread(post?.comments || [], sort),
-    [post, sort],
-  );
-  const visibleComments = progressiveCommentItems(comments, expandedComments);
+  const comments: Comment[] = useMemo(() => {
+    const loadedComments: Comment[] = post?.comments || [];
+    if (sort === 'time') return sortCommentsForThread(loadedComments, 'time');
+    if (sort === 'latest') {
+      return [...loadedComments].sort(
+        (left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime(),
+      );
+    }
+    if (!topOrderIds.length) return sortCommentsForThread(loadedComments, 'top');
+
+    const byId = new Map(loadedComments.map(item => [item.id, item]));
+    const ordered = topOrderIds.map(id => byId.get(id)).filter(Boolean) as Comment[];
+    const known = new Set(topOrderIds);
+    return [...ordered, ...loadedComments.filter(item => !known.has(item.id))];
+  }, [post, sort, topOrderIds]);
+  const visibleComments = comments.slice(0, visibleCommentCount);
   const commentCount = Number(post?.commentsCount ?? countThreadComments(comments));
   const aliasConflict = aliasConflictOnPost(alias, post);
   const showAliasBar = composerFocused || Boolean(comment.trim()) || aliasEditing;
   const quoted = replyingTo?.reply || replyingTo?.comment;
+
+  useEffect(() => {
+    if (sort === 'top' && post?.comments?.length && !topOrderIds.length) {
+      setTopOrderIds(sortCommentsForThread(post.comments, 'top').map(item => item.id));
+    }
+  }, [post, sort, topOrderIds.length]);
+
+  const selectSort = (nextSort: 'time' | 'latest' | 'top') => {
+    if (nextSort === 'top') {
+      setTopOrderIds(sortCommentsForThread(post?.comments || [], 'top').map(item => item.id));
+    }
+    setSort(nextSort);
+  };
+
+  const refreshComments = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const applyPost = useCallback(
     (incoming: any) => {
@@ -567,7 +618,6 @@ export default function CommunityPostScreen() {
 
   const startReply = (commentItem: Comment, reply?: Reply) => {
     setReplyingTo({comment: commentItem, reply});
-    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const openLink = async (url: string) => {
@@ -664,6 +714,10 @@ export default function CommunityPostScreen() {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          stickyHeaderIndices={[2]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refreshComments} />
+          }
           automaticallyAdjustKeyboardInsets>
           <CommunityPostCard
             compact
@@ -704,14 +758,21 @@ export default function CommunityPostScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{selected: sort === 'time'}}
-                onPress={() => setSort('time')}
+                onPress={() => selectSort('time')}
                 style={[styles.sortChip, sort === 'time' && styles.sortChipActive]}>
                 <Text style={[styles.sortText, sort === 'time' && styles.sortTextActive]}>Thread</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{selected: sort === 'latest'}}
+                onPress={() => selectSort('latest')}
+                style={[styles.sortChip, sort === 'latest' && styles.sortChipActive]}>
+                <Text style={[styles.sortText, sort === 'latest' && styles.sortTextActive]}>Latest</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
                 accessibilityState={{selected: sort === 'top'}}
-                onPress={() => setSort('top')}
+                onPress={() => selectSort('top')}
                 style={[styles.sortChip, sort === 'top' && styles.sortChipActive]}>
                 <Text style={[styles.sortText, sort === 'top' && styles.sortTextActive]}>Top</Text>
               </Pressable>
@@ -735,11 +796,14 @@ export default function CommunityPostScreen() {
                   android_ripple={{color: pastelColors.auth.primaryOverlay}}
                   onPress={() => {
                     if ((item.replies || []).length > 0) {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                       setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}));
                     }
                   }}
                   onLongPress={() => setActiveCommentActions(item.id)}
                   delayLongPress={350}>
+                  <View style={styles.commentTopRow}>
+                    <View style={styles.commentContent}>
                   <AliasChip
                     alias={item.alias}
                     mine={item.mine}
@@ -748,6 +812,19 @@ export default function CommunityPostScreen() {
                   <Text style={styles.commentText} maxFontSizeMultiplier={1.4}>
                     {item.text}
                   </Text>
+                    </View>
+                    <VoteButton
+                      icon="heart"
+                      count={item.likes || 0}
+                      active={item.likedByMe}
+                      label="Like comment"
+                      compact
+                      vertical
+                      hideZeroCount
+                      reduceMotion={reduceMotion}
+                      onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
+                    />
+                  </View>
                   <View style={styles.engagement}>
                     <Pressable
                       accessibilityRole="button"
@@ -756,16 +833,6 @@ export default function CommunityPostScreen() {
                       style={styles.replyAction}>
                       <Text style={styles.replyActionText}>Reply</Text>
                     </Pressable>
-                    <View style={styles.engagementSpacer} />
-                    <VoteButton
-                      icon="heart"
-                      count={item.likes || 0}
-                      active={item.likedByMe}
-                      label="Like comment"
-                      compact
-                      reduceMotion={reduceMotion}
-                      onPress={() => engage(item, 'like', `${base}/comments/${item.id}/like`)}
-                    />
                     {activeCommentActions === item.id ? <VoteButton
                       icon="thumbs-down"
                       count={item.dislikes || 0}
@@ -789,9 +856,25 @@ export default function CommunityPostScreen() {
                       <Feather name="flag" size={22} color={pastelColors.auth.mutedText} />
                     </Pressable>
                     </> : null}
+                    {(item.replies || []).length > 2 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}));
+                        }}
+                        style={styles.showRepliesButton}>
+                        <Text style={styles.showRepliesText}>
+                          {expandedReplies[item.id] ? 'Hide replies' : `View ${(item.replies || []).length} replies`}
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </View>
 
-                  {progressiveCommentItems(item.replies || [], Boolean(expandedReplies[item.id]), 2).map(reply => (
+                  {(expandedReplies[item.id]
+                    ? progressiveCommentItems(item.replies || [], true, 2)
+                    : []
+                  ).map(reply => (
                     <Pressable
                       style={[styles.reply, pressedCommentId === reply.id && styles.commentPressed]}
                       key={reply.id}
@@ -800,12 +883,29 @@ export default function CommunityPostScreen() {
                       android_ripple={{color: pastelColors.auth.primaryOverlay}}
                       onLongPress={() => setActiveCommentActions(reply.id)}
                       delayLongPress={350}>
+                      <View style={styles.commentTopRow}>
+                        <View style={styles.commentContent}>
                       <AliasChip
                         alias={reply.alias}
                         mine={reply.mine}
                         time={formatRelativeTime(reply.createdAt)}
                       />
                       <Text style={styles.commentText}>{reply.text}</Text>
+                        </View>
+                        <VoteButton
+                          icon="heart"
+                          count={reply.likes || 0}
+                          active={reply.likedByMe}
+                          label="Like reply"
+                          compact
+                          vertical
+                          hideZeroCount
+                          reduceMotion={reduceMotion}
+                          onPress={() =>
+                            engage(reply, 'like', `${base}/comments/${item.id}/replies/${reply.id}/like`)
+                          }
+                        />
+                      </View>
                       <View style={styles.engagement}>
                         <Pressable
                           accessibilityRole="button"
@@ -814,18 +914,6 @@ export default function CommunityPostScreen() {
                           style={styles.replyAction}>
                           <Text style={styles.replyActionText}>Reply</Text>
                         </Pressable>
-                        <View style={styles.engagementSpacer} />
-                        <VoteButton
-                          icon="heart"
-                          count={reply.likes || 0}
-                          active={reply.likedByMe}
-                          label="Like reply"
-                          compact
-                          reduceMotion={reduceMotion}
-                          onPress={() =>
-                            engage(reply, 'like', `${base}/comments/${item.id}/replies/${reply.id}/like`)
-                          }
-                        />
                         {activeCommentActions === reply.id ? <VoteButton
                           icon="thumbs-down"
                           count={reply.dislikes || 0}
@@ -859,17 +947,6 @@ export default function CommunityPostScreen() {
                     </Pressable>
                   ))}
 
-                  {(item.replies || []).length > 2 ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => setExpandedReplies(current => ({...current, [item.id]: !current[item.id]}))}
-                      style={styles.showRepliesButton}>
-                      <Text style={styles.showRepliesText}>
-                        {expandedReplies[item.id] ? 'Hide replies' : `View ${(item.replies || []).length} replies`}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-
                   {replyingTo?.comment.id === item.id ? (
                     <View style={styles.quotedReply}>
                       <Text style={styles.quotedLabel}>
@@ -882,12 +959,14 @@ export default function CommunityPostScreen() {
                   ) : null}
                 </Pressable>
               ))}
-              {comments.length > 3 ? (
-                <Pressable onPress={() => setExpandedComments(current => !current)} style={styles.showRepliesButton}>
-                  <Text style={styles.showRepliesText}>
-                    {expandedComments ? 'Show fewer comments' : `Show ${comments.length - 3} more comments`}
-                  </Text>
+              {visibleCommentCount < comments.length ? (
+                <Pressable
+                  onPress={() => setVisibleCommentCount(current => current + 50)}
+                  style={styles.showRepliesButton}>
+                  <Text style={styles.showRepliesText}>Show more</Text>
                 </Pressable>
+              ) : comments.length > 0 ? (
+                <Text style={styles.endComments}>-- end of comments --</Text>
               ) : null}
             </Animated.View>
           )}
@@ -927,14 +1006,14 @@ export default function CommunityPostScreen() {
                     </Text>
                     <Feather name="edit-2" size={16} color={pastelColors.accent} />
                   </Pressable>
+                  <Text
+                    testID="comment-character-counter"
+                    style={styles.counter}
+                    accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
+                    {comment.length}/{MAX_COMMENT_TEXT}
+                  </Text>
                 </View>
               )}
-              <Text
-                testID="comment-character-counter"
-                style={styles.counter}
-                accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
-                {comment.length}/{MAX_COMMENT_TEXT}
-              </Text>
               {aliasConflict ? <Text style={styles.aliasError}>{aliasConflict}</Text> : null}
             </View>
           ) : null}
@@ -1201,17 +1280,30 @@ const styles = StyleSheet.create({
   },
   commentsHead: {
     marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    backgroundColor: pastelColors.auth.background,
+    minHeight: 56,
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+    flexWrap: 'nowrap',
   },
   comments: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '900',
     color: pastelColors.auth.deepText,
   },
-  sortRow: {flexDirection: 'row', gap: 6},
+  sortRow: {
+    position: 'absolute',
+    top: 8,
+    right: 0,
+    flexDirection: 'row',
+    gap: 6,
+  },
   sortChip: {
     minHeight: 32,
     paddingHorizontal: 10,
@@ -1239,14 +1331,22 @@ const styles = StyleSheet.create({
     backgroundColor: pastelColors.white,
   },
   commentPressed: {backgroundColor: pastelColors.auth.glassSurface},
-  commentText: {marginTop: 5, color: pastelColors.auth.deepText, lineHeight: 20, fontSize: 15, fontWeight: '700'},
+  commentText: {
+    marginTop: 5,
+    paddingLeft: 8,
+    color: pastelColors.auth.deepText,
+    lineHeight: 20,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  commentTopRow: {flexDirection: 'row', alignItems: 'center'},
+  commentContent: {flex: 1, minWidth: 0},
   engagement: {
-    marginTop: 8,
+    marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
-  engagementSpacer: {flex: 1},
   voteButton: {
     minHeight: 44,
     minWidth: 44,
@@ -1257,9 +1357,17 @@ const styles = StyleSheet.create({
   },
   voteCount: {fontWeight: '800', color: pastelColors.auth.mutedText, fontSize: 12},
   voteButtonCompact: {minHeight: 34, minWidth: 34, paddingHorizontal: 3, gap: 3},
+  voteButtonVertical: {
+    minWidth: 34,
+    paddingHorizontal: 2,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 1,
+  },
   voteCountCompact: {fontSize: 11},
   voteCountActive: {color: pastelColors.accent},
-  replyAction: {minHeight: 34, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center'},
+  replyAction: {minHeight: 26, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center'},
   replyActionText: {fontSize: 12, fontWeight: '900', color: pastelColors.auth.mutedText},
   moreAction: {
     marginLeft: 'auto',
@@ -1283,8 +1391,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: pastelColors.auth.primaryOverlay,
   },
-  showRepliesButton: {alignSelf: 'flex-start', marginTop: 8, paddingVertical: 6, paddingHorizontal: 2},
+  showRepliesButton: {minHeight: 26, paddingVertical: 2, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center'},
   showRepliesText: {fontWeight: '900', color: pastelColors.accent, fontSize: 12},
+  endComments: {
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+    color: pastelColors.auth.mutedText,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   quotedLabel: {fontWeight: '800', color: pastelColors.accent, fontSize: 12},
   quotedText: {marginTop: 4, color: pastelColors.auth.deepText, fontWeight: '600'},
   actionActive: {fontWeight: '900', color: pastelColors.accent},
@@ -1329,7 +1445,7 @@ const styles = StyleSheet.create({
   },
   replyingText: {flex: 1, fontWeight: '700', color: pastelColors.auth.mutedText, marginRight: 8},
   composer: {
-    padding: 10,
+    padding: 8,
     borderRadius: 16,
     backgroundColor: pastelColors.white,
     flexDirection: 'row',
@@ -1337,8 +1453,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
+    minHeight: 36,
+    maxHeight: 96,
     color: pastelColors.auth.deepText,
     paddingTop: 10,
   },
@@ -1348,7 +1464,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: pastelColors.auth.mutedText,
   },
-  sendButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
+  sendButton: {height: 38, width: 38, alignItems: 'center', justifyContent: 'center'},
   skeletonCard: {
     padding: 16,
     borderRadius: 18,

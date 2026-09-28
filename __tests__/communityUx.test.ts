@@ -9,6 +9,7 @@ import {
   suggestCommunityAlias,
   progressiveCommentItems,
   communityJoinActionLabel,
+  communityJoinHeaderLabel,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
@@ -62,6 +63,11 @@ describe('community browse copy', () => {
 
   it('labels approval-only visitors with a request action', () => {
     expect(communityJoinActionLabel({joinMode: 'approval'})).toBe('Request to join');
+  });
+
+  it('shows pending approval state in the public approval header', () => {
+    expect(communityJoinHeaderLabel({joinMode: 'approval'}, 'pending')).toBe('Request sent');
+    expect(communityJoinHeaderLabel({joinMode: 'approval'}, 'declined')).toBe('Request again');
   });
 
   it('enables all actions after joining an open public community', () => {

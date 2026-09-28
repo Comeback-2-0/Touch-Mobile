@@ -1,6 +1,6 @@
 {
   "name": "Touch",
-  "version": "2.3.0",
+  "version": "2.3.6",
   "private": true,
   "scripts": {
     "android": "react-native run-android",

@@ -48,6 +48,15 @@ export function communityJoinActionLabel(community: {joinMode?: string}) {
   return community.joinMode === 'approval' ? 'Request to join' : 'Join';
 }
 
+export function communityJoinHeaderLabel(
+  community: {joinMode?: string},
+  requestStatus?: string | null,
+) {
+  if (requestStatus === 'pending') return 'Request sent';
+  if (requestStatus === 'declined') return 'Request again';
+  return communityJoinActionLabel(community);
+}
+
 export function visibilityLabel(visibility?: string) {
   return visibility === 'members' ? 'Members-only' : 'Public';
 }

@@ -24,7 +24,7 @@ import CommunityConfirmSheet from './CommunityConfirmSheet';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import {
   communityErrorCopy,
-  communityJoinActionLabel,
+  communityJoinHeaderLabel,
   joinModeLabel,
   leaveConsequenceCopy,
   membersCopy,
@@ -143,6 +143,22 @@ export default function CommunityHomeScreen() {
       })
       .catch(() => { unreadMarkedRef.current = false; });
   }).current;
+  const onScrollToIndexFailed = useCallback(
+    ({index, averageItemLength}: {index: number; averageItemLength: number}) => {
+      if (index < 0 || index >= posts.length) return;
+
+      // Variable-height posts may not have been measured yet. Move near the
+      // target using the measured average, then retry once after rendering.
+      listRef.current?.scrollToOffset({
+        offset: Math.max(0, averageItemLength * index),
+        animated: false,
+      });
+      setTimeout(() => {
+        listRef.current?.scrollToIndex({index, animated: false, viewPosition: 0.12});
+      }, 100);
+    },
+    [posts.length],
+  );
 
   const joined = membership?.status === 'active';
   const manager = ['owner', 'moderator'].includes(membership?.role);
@@ -310,6 +326,17 @@ export default function CommunityHomeScreen() {
     } catch {
       Alert.alert('Could not cancel request', 'Please try again.');
     }
+  };
+
+  const confirmCancelRequest = () => {
+    Alert.alert(
+      'Cancel join request?',
+      'You can send another request later if you change your mind.',
+      [
+        {text: 'Keep request', style: 'cancel'},
+        {text: 'Cancel request', style: 'destructive', onPress: cancelRequest},
+      ],
+    );
   };
 
   const toggleMute = async () => {
@@ -527,10 +554,11 @@ export default function CommunityHomeScreen() {
           {!joined && community?.contentVisibility === 'public' && community?.joinMode !== 'invite-only' ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={communityJoinActionLabel(community)}
-              onPress={openJoinFlow}
+              accessibilityLabel={communityJoinHeaderLabel(community, joinRequest?.status)}
+              onPress={pending ? confirmCancelRequest : openJoinFlow}
+              disabled={sending}
               style={styles.joinHeaderButton}>
-              <Text style={styles.joinHeaderText}>{communityJoinActionLabel(community)}</Text>
+              <Text style={styles.joinHeaderText}>{communityJoinHeaderLabel(community, joinRequest?.status)}</Text>
             </Pressable>
           ) : null}
           {joined ? (
@@ -571,6 +599,7 @@ export default function CommunityHomeScreen() {
           if (nativeEvent.contentOffset.y < 80) loadOlder();
         }}
         onViewableItemsChanged={onViewableItemsChanged}
+        onScrollToIndexFailed={onScrollToIndexFailed}
         viewabilityConfig={{itemVisiblePercentThreshold: 35}}
         scrollEventThrottle={160}
         onContentSizeChange={() => {

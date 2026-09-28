@@ -8,8 +8,8 @@ import {
 } from './authTokenStorage';
 
 const DEBUG_API_URL = 'https://ij-backend.dophera.tech';
-const RELEASE_API_URL = 'https://kali-backend.dophera.tech';
-// const RELEASE_API_URL = 'https://touch-load-balancer.ij-roy.workers.dev';
+// const RELEASE_API_URL = 'https://kali-backend.dophera.tech';
+const RELEASE_API_URL = 'https://touch-load-balancer.ij-roy.workers.dev';
 
 export const API_URL = __DEV__ ? DEBUG_API_URL : RELEASE_API_URL;
 
