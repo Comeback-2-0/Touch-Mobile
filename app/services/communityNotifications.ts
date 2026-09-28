@@ -1,6 +1,7 @@
 import messaging from '@react-native-firebase/messaging';
 import {Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {getVersion} from 'react-native-device-info';
 import {api} from '../utils/api';
 
 const NOTIFICATION_PERMISSION_REQUESTED = 'touch.notification_permission_requested.v1';
@@ -17,7 +18,7 @@ export async function registerNotificationDevice() {
   if (!enabled) return null;
   const token = await messaging().getToken();
   if (!token) return null;
-  await api.post('/notifications/devices', {token, platform: Platform.OS, appVersion: '2.3.0'});
+  await api.post('/notifications/devices', {token, platform: Platform.OS, appVersion: getVersion()});
   return token;
 }
 
@@ -26,7 +27,7 @@ export async function registerNotificationToken(token: string) {
   await api.post('/notifications/devices', {
     token,
     platform: Platform.OS,
-    appVersion: '2.3.0',
+    appVersion: getVersion(),
   });
 }
 

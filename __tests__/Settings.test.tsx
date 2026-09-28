@@ -6,6 +6,10 @@ import {useAuth} from '../app/context/AuthContext';
 
 const mockNavigate = jest.fn();
 const mockSignOut = jest.fn();
+jest.mock('react-native-device-info', () => ({
+  __esModule: true,
+  getVersion: () => '9.9.9',
+}));
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
@@ -58,8 +62,7 @@ describe('SettingsScreen', () => {
     ].forEach(label => {
       expect(screen!.root.findAllByProps({children: label}).length).toBeGreaterThan(0);
     });
-    const {version: expectedVersion} = require('../package.json');
-    expect(screen!.root.findByProps({testID: 'settings-app-version'}).props.children).toContain(expectedVersion);
+    expect(screen!.root.findByProps({testID: 'settings-app-version'}).props.children).toContain('9.9.9');
   });
 
   it('opens external settings links', () => {

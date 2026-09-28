@@ -24,6 +24,7 @@
     "dotenv": "^16.5.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-device-info": "^14.1.1",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^2.31.2",
     "react-native-image-crop-picker": "^0.50.1",

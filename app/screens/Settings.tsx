@@ -10,15 +10,14 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import {getVersion} from 'react-native-device-info';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {SettingsStackParamList} from '../navigation/types/SettingsStackParamList';
 import {useAuth} from '../context/AuthContext';
 import {pastelColors} from '../theme/colors';
 
-// Read version from root package.json so UI stays in sync with native builds
-// Use require to avoid needing additional TS config changes for JSON imports
-const {version: APP_VERSION} = require('../../package.json');
+const APP_VERSION = getVersion();
 
 const LINKS = {
   childSafety: 'https://ij-roy.github.io/touch/child-safety-standards/',
