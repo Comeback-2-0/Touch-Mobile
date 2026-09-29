@@ -294,6 +294,7 @@ export default function CommunityPostScreen() {
   const [error, setError] = useState('');
   const [comment, setComment] = useState('');
   const [alias, setAlias] = useState('');
+  const [aliasLocked, setAliasLocked] = useState(false);
   const [aliasEditing, setAliasEditing] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
   const [sort, setSort] = useState<'time' | 'latest' | 'top'>('top');
@@ -394,6 +395,7 @@ export default function CommunityPostScreen() {
       const response = await api.get(`${base}`);
       setPost(response.data.post);
       if (response.data.post?.viewerAlias) setAlias(response.data.post.viewerAlias);
+      setAliasLocked(Boolean(response.data.post?.viewerAliasLocked));
     } catch (err: any) {
       setPost(null);
       const status = err?.response?.status;
@@ -466,6 +468,7 @@ export default function CommunityPostScreen() {
     (incoming: any) => {
       setPost((current: any) => mergeThread(current, incoming));
       if (incoming?.viewerAlias) setAlias(incoming.viewerAlias);
+      if (typeof incoming?.viewerAliasLocked === 'boolean') setAliasLocked(incoming.viewerAliasLocked);
     },
     [],
   );
@@ -506,7 +509,7 @@ export default function CommunityPostScreen() {
     }
   };
 
-  const sendComment = async () => {
+  const submitComment = async () => {
     if (!joined) {
       showCommunityToast('Join the community to interact.');
       return;
@@ -537,6 +540,21 @@ export default function CommunityPostScreen() {
     } finally {
       setSending(false);
     }
+  };
+
+  const sendComment = () => {
+    if (!aliasLocked) {
+      Alert.alert(
+        'Confirm alias',
+        `Continue with ${alias || 'anonymous'}? You won't be able to change it later on this post.`,
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {text: 'Continue', onPress: submitComment},
+        ],
+      );
+      return;
+    }
+    void submitComment();
   };
 
   const engage = async (item: Comment | Reply, action: 'like' | 'dislike', path: string) => {
@@ -975,45 +993,17 @@ export default function CommunityPostScreen() {
         <View style={styles.composerDock}>
           {showAliasBar ? (
             <View style={styles.aliasBar}>
-              {aliasEditing ? (
-                <View style={styles.aliasEditRow}>
-                  <TextInput
-                    value={alias}
-                    onChangeText={setAlias}
-                    autoFocus
-                    maxLength={MAX_ALIAS_LENGTH}
-                    placeholder="Choose a name"
-                    placeholderTextColor={pastelColors.auth.mutedText}
-                    style={styles.aliasInput}
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Done editing name"
-                    onPress={() => !aliasConflict && setAliasEditing(false)}
-                    style={styles.aliasDone}>
-                    <Text style={styles.aliasDoneText}>Use</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.aliasHeaderRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Commenting as ${alias}. Edit name`}
-                    onPress={() => setAliasEditing(true)}
-                    style={styles.aliasTap}>
-                    <Text style={styles.aliasBarText}>
-                      Commenting as {alias || 'anonymous'}
-                    </Text>
-                    <Feather name="edit-2" size={16} color={pastelColors.accent} />
-                  </Pressable>
-                  <Text
-                    testID="comment-character-counter"
-                    style={styles.counter}
-                    accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
-                    {comment.length}/{MAX_COMMENT_TEXT}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.aliasHeaderRow}>
+                <Text style={styles.aliasBarText} accessibilityLabel={`Commenting as ${alias}`}>
+                  Commenting as {alias || 'anonymous'}
+                </Text>
+                <Text
+                  testID="comment-character-counter"
+                  style={styles.counter}
+                  accessibilityLabel={`${comment.length} of ${MAX_COMMENT_TEXT} characters`}>
+                  {comment.length}/{MAX_COMMENT_TEXT}
+                </Text>
+              </View>
               {aliasConflict ? <Text style={styles.aliasError}>{aliasConflict}</Text> : null}
             </View>
           ) : null}
@@ -1120,13 +1110,12 @@ export default function CommunityPostScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalDismiss} onPress={() => setMenuOpen(false)} />
-          <View style={styles.reportSheet}>
-            <Text style={styles.reportTitle}>Post</Text>
-            <Pressable onPress={sharePost} style={styles.reason} accessibilityLabel="Share post">
-              <Text style={styles.reasonText}>
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.postMenuOverlay} onPress={() => setMenuOpen(false)}>
+          <View style={styles.postMenu}>
+            <Text style={styles.postMenuTitle}>Post options</Text>
+            <Pressable onPress={sharePost} style={styles.postMenuRow} accessibilityLabel="Share post">
+              <Text style={styles.postMenuRowText}>
                 {isPrivate ? 'Sharing unavailable for private posts' : 'Share'}
               </Text>
             </Pressable>
@@ -1136,14 +1125,14 @@ export default function CommunityPostScreen() {
                 setReportTarget(null);
                 setReportOpen(true);
               }}
-              style={styles.reason}>
-              <Text style={styles.reasonText}>Report post</Text>
+              style={styles.postMenuRow}>
+              <Text style={styles.postMenuRowText}>Report post</Text>
             </Pressable>
-            <Pressable onPress={() => setMenuOpen(false)} style={styles.cancelButton}>
-              <Text style={styles.cancelText}>Cancel</Text>
+            <Pressable onPress={() => setMenuOpen(false)} style={styles.postMenuCancel}>
+              <Text style={styles.postMenuCancelText}>Cancel</Text>
             </Pressable>
           </View>
-        </View>
+        </Pressable>
       </Modal>
 
       <CommunityConfirmSheet
@@ -1207,6 +1196,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(50, 17, 31, 0.32)',
   },
   modalDismiss: {...StyleSheet.absoluteFillObject},
+  postMenuOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.18)'},
+  postMenu: {padding: 18, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: pastelColors.white},
+  postMenuTitle: {fontSize: 20, fontWeight: '900', color: pastelColors.auth.deepText, marginBottom: 8},
+  postMenuRow: {
+    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginTop: 4,
+    justifyContent: 'center',
+    backgroundColor: pastelColors.auth.background,
+  },
+  postMenuRowText: {fontWeight: '800', color: pastelColors.auth.deepText},
+  postMenuCancel: {marginTop: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center'},
+  postMenuCancelText: {fontWeight: '800', color: pastelColors.auth.mutedText},
   reportSheet: {
     maxHeight: '92%',
     padding: 18,
@@ -1415,7 +1419,7 @@ const styles = StyleSheet.create({
   aliasBar: {paddingHorizontal: 4, marginBottom: 6},
   aliasHeaderRow: {flexDirection: 'row', alignItems: 'center', minHeight: 32},
   aliasTap: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32},
-  aliasBarText: {fontWeight: '800', color: pastelColors.auth.deepText},
+  aliasBarText: {flex: 1, fontWeight: '800', color: pastelColors.auth.deepText},
   aliasEditRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
   aliasInput: {
     flex: 1,
@@ -1460,9 +1464,11 @@ const styles = StyleSheet.create({
   },
   composerMeta: {alignItems: 'center'},
   counter: {
+    marginLeft: 8,
     fontSize: 10,
     fontWeight: '700',
     color: pastelColors.auth.mutedText,
+    textAlign: 'right',
   },
   sendButton: {height: 38, width: 38, alignItems: 'center', justifyContent: 'center'},
   skeletonCard: {

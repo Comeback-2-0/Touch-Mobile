@@ -3,10 +3,16 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Pressable,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -24,6 +30,9 @@ import CommunityConfirmSheet from './CommunityConfirmSheet';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import {
   communityErrorCopy,
+  communityCommentCount,
+  formatCommunityCount,
+  REPORT_CATEGORIES,
   communityJoinHeaderLabel,
   joinModeLabel,
   leaveConsequenceCopy,
@@ -33,6 +42,10 @@ import {
   splitRules,
   visibilityLabel,
 } from './communityUx';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type Route = RouteProp<CommunityStackParamList, 'CommunityHome'>;
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
@@ -118,11 +131,18 @@ export default function CommunityHomeScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('harassment');
+  const [reportContext, setReportContext] = useState('');
+  const [reportBusy, setReportBusy] = useState(false);
   const [sending, setSending] = useState(false);
   const [muted, setMuted] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const [revealingCountKey, setRevealingCountKey] = useState<string | null>(null);
+  const countRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blockCommunity = useBlockedCommunitiesStore(state => state.block);
   const listRef = useRef<FlatList<Post>>(null);
   const stickToLatestRef = useRef(true);
@@ -159,6 +179,10 @@ export default function CommunityHomeScreen() {
     },
     [posts.length],
   );
+
+  useEffect(() => () => {
+    if (countRevealTimer.current) clearTimeout(countRevealTimer.current);
+  }, []);
 
   const joined = membership?.status === 'active';
   const manager = ['owner', 'moderator'].includes(membership?.role);
@@ -391,12 +415,59 @@ export default function CommunityHomeScreen() {
       showCommunityToast('Join the community to interact.');
       return;
     }
+    const previousPost = posts.find(item => item.id === postId);
+    if (!previousPost) return;
+    const wasLiked = Boolean(previousPost.likedByMe);
+    const wasDisliked = Boolean(previousPost.dislikedByMe);
+    const optimisticPost: Post = {
+      ...previousPost,
+      likes: Math.max(0, Number(previousPost.likes || 0) + (action === 'like' ? (wasLiked ? -1 : 1) : (wasLiked ? -1 : 0))),
+      dislikes: Math.max(0, Number(previousPost.dislikes || 0) + (action === 'dislike' ? (wasDisliked ? -1 : 1) : (wasDisliked ? -1 : 0))),
+      likedByMe: action === 'like' ? !wasLiked : false,
+      dislikedByMe: action === 'dislike' ? !wasDisliked : false,
+    };
+    const countKey = `${postId}:${action}`;
+    if (countRevealTimer.current) clearTimeout(countRevealTimer.current);
+    setRevealingCountKey(countKey);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setPosts(current => current.map(item => item.id === postId ? optimisticPost : item));
+    countRevealTimer.current = setTimeout(() => {
+      setRevealingCountKey(current => current === countKey ? null : current);
+      countRevealTimer.current = null;
+    }, 240);
+
     try {
       const response = await api.post(`/communities/${id}/content/${postId}/${action}`);
       const next = response.data?.post;
-      if (next) setPosts(current => current.map(item => item.id === postId ? {...item, ...next} : item));
+      if (next) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setPosts(current => current.map(item => item.id === postId ? {...item, ...next} : item));
+      }
     } catch {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setPosts(current => current.map(item => item.id === postId ? previousPost : item));
       showCommunityToast('Could not update reaction.');
+    }
+  };
+
+  const submitReport = async () => {
+    if (reportBusy || !reportPostId) return;
+    const reportId = reportPostId;
+    setReportBusy(true);
+    try {
+      await api.post(`/communities/${id}/content/${reportId}/report`, {
+        reason: reportReason,
+        context: reportContext.trim(),
+      });
+      setReportOpen(false);
+      setReportPostId(null);
+      setReportContext('');
+      showCommunityToast('Thanks. You helped keep this space safer.');
+      setBlockConfirmOpen(true);
+    } catch (err) {
+      Alert.alert('Could not report', communityErrorCopy(err, 'Please try again.'));
+    } finally {
+      setReportBusy(false);
     }
   };
 
@@ -648,11 +719,27 @@ export default function CommunityHomeScreen() {
             <View style={styles.feedActions}>
                 <Pressable accessibilityRole="button" accessibilityLabel="Like post" onPress={() => engagePost(item.id, 'like')} style={styles.feedAction}>
                 <MaterialCommunityIcons name={item.likedByMe ? 'thumb-up' : 'thumb-up-outline'} size={19} color={item.likedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
-                <Text style={styles.feedActionText}>{Number(item.likes || 0)}</Text>
+                {Number(item.likes || 0) > 0 ? (
+                  <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:like` && styles.hiddenCount]}>
+                    {formatCommunityCount(Number(item.likes || 0))}
+                  </Text>
+                ) : null}
                 </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Dislike post" onPress={() => engagePost(item.id, 'dislike')} style={styles.feedAction}>
                 <MaterialCommunityIcons name={item.dislikedByMe ? 'thumb-down' : 'thumb-down-outline'} size={19} color={item.dislikedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
-                <Text style={styles.feedActionText}>{Number(item.dislikes || 0)}</Text>
+                {Number(item.dislikes || 0) > 0 ? (
+                  <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:dislike` && styles.hiddenCount]}>
+                    {formatCommunityCount(Number(item.dislikes || 0))}
+                  </Text>
+                ) : null}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Comments, ${communityCommentCount(item)}`}
+                onPress={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
+                style={styles.feedAction}>
+                <MaterialCommunityIcons name="comment-outline" size={19} color={pastelColors.auth.deepText} />
+                {communityCommentCount(item) > 0 ? <Text style={styles.feedActionText}>{formatCommunityCount(communityCommentCount(item))}</Text> : null}
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -697,9 +784,9 @@ export default function CommunityHomeScreen() {
           <View style={styles.postMenu}>
             <Text style={styles.optionsTitle}>Post options</Text>
             <Pressable style={styles.optionsRow} onPress={() => {
-              const reportId = postMenuId;
+              setReportPostId(postMenuId);
               setPostMenuId(null);
-              if (reportId) api.post(`/communities/${id}/content/${reportId}/report`, {reason: 'other'}).catch(() => undefined);
+              setReportOpen(true);
             }}>
               <Feather name="flag" size={18} color={pastelColors.auth.deepText} />
               <Text style={styles.optionsRowText}>Report post</Text>
@@ -709,6 +796,45 @@ export default function CommunityHomeScreen() {
             </Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      <Modal visible={reportOpen} transparent animationType="slide" onRequestClose={() => !reportBusy && setReportOpen(false)}>
+        <KeyboardAvoidingView style={styles.reportOverlay} behavior="padding">
+          <Pressable style={styles.reportBackdrop} onPress={() => !reportBusy && setReportOpen(false)} />
+          <View style={styles.reportSheet}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+              <Text style={styles.reportTitle}>Report post</Text>
+              <Text style={styles.reportCopy}>Tell moderators what feels unsafe.</Text>
+              {REPORT_CATEGORIES.map(reason => (
+                <Pressable
+                  key={reason.value}
+                  onPress={() => setReportReason(reason.value)}
+                  style={[styles.reportReason, reportReason === reason.value && styles.reportReasonActive]}
+                  accessibilityState={{selected: reportReason === reason.value}}>
+                  <Text style={[styles.reportReasonText, reportReason === reason.value && styles.reportReasonTextActive]}>
+                    {reason.label}
+                  </Text>
+                </Pressable>
+              ))}
+              <TextInput
+                value={reportContext}
+                onChangeText={setReportContext}
+                placeholder="Optional context"
+                placeholderTextColor={pastelColors.auth.mutedText}
+                multiline
+                style={styles.reportInput}
+              />
+              <View style={styles.reportActions}>
+                <Pressable onPress={() => setReportOpen(false)} style={styles.cancelButton} disabled={reportBusy}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={submitReport} style={styles.reportButton} disabled={reportBusy}>
+                  <Text style={styles.reportButtonText}>{reportBusy ? 'Sending...' : 'Send report'}</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={optionsOpen} transparent animationType="slide" onRequestClose={() => setOptionsOpen(false)}>
@@ -980,25 +1106,34 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(50, 17, 31, 0.04)',
   },
   feedActions: {
-    paddingHorizontal: 14,
+    paddingLeft: 8,
+    paddingRight: 14,
     paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 24,
+    gap: 8,
   },
-  feedAction: {flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 38},
+  feedAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 38,
+  },
   feedActionText: {fontWeight: '900', color: pastelColors.auth.deepText, fontSize: 13},
+  hiddenCount: {opacity: 0},
   commentInput: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 28,
     marginLeft: 8,
     paddingHorizontal: 12,
-    borderRadius: 18,
-    backgroundColor: pastelColors.auth.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#000',
+    backgroundColor: pastelColors.white,
     justifyContent: 'center',
   },
-  commentPlaceholder: {color: pastelColors.auth.mutedText, fontSize: 12},
+  commentPlaceholder: {color: pastelColors.auth.mutedText, fontSize: 12, lineHeight: 14},
   feedMeta: {color: pastelColors.auth.mutedText, fontWeight: '700', fontSize: 12},
   meta: {
     paddingHorizontal: 14,
@@ -1026,6 +1161,51 @@ const styles = StyleSheet.create({
     backgroundColor: pastelColors.white,
   },
   optionsOverlay: {flex: 1, justifyContent: 'flex-end'},
+  reportOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(50, 17, 31, 0.32)'},
+  reportBackdrop: {...StyleSheet.absoluteFillObject},
+  reportSheet: {
+    maxHeight: '92%',
+    padding: 18,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    backgroundColor: pastelColors.auth.background,
+  },
+  reportTitle: {fontSize: 20, fontWeight: '900', color: pastelColors.auth.deepText},
+  reportCopy: {marginTop: 4, marginBottom: 10, color: pastelColors.auth.mutedText, fontWeight: '700'},
+  reportReason: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginTop: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    backgroundColor: pastelColors.white,
+  },
+  reportReasonActive: {backgroundColor: pastelColors.auth.deepText},
+  reportReasonText: {fontWeight: '800', color: pastelColors.auth.deepText},
+  reportReasonTextActive: {color: pastelColors.white},
+  reportInput: {
+    height: 96,
+    minHeight: 80,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    textAlignVertical: 'top',
+    backgroundColor: pastelColors.white,
+    color: pastelColors.auth.deepText,
+  },
+  reportActions: {marginTop: 14, flexDirection: 'row', justifyContent: 'flex-end', gap: 10},
+  cancelButton: {paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center'},
+  cancelText: {fontWeight: '900', color: pastelColors.auth.mutedText},
+  reportButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: pastelColors.accent,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  reportButtonText: {fontWeight: '900', color: pastelColors.white},
   postMenuOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.18)'},
   postMenu: {padding: 18, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: pastelColors.white},
   optionsBackdrop: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(50, 17, 31, 0.28)'},

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome Touch mark. Keep the background transparent for Android's icon tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+    <group android:translateX="-96" android:translateY="-104">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M208,125 C218,121 230,127 233,137 C237,149 228,157 217,161 C196,168 180,178 181,196 C181,214 193,230 185,258 C181,240 166,226 153,214 C141,203 138,189 144,174 C154,150 185,130 208,125 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M240,198 A23,23 0,1 1,194 198 A23,23 0,1 1,240 198 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M254,178 C258,164 271,162 281,170 C292,180 294,199 291,215 C287,236 274,253 256,259 C244,264 232,260 228,251 C224,243 230,236 238,230 C254,218 258,206 254,193 C252,187 252,182 254,178 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M193,239 C196,226 206,222 214,228 C223,233 222,242 218,253 C215,264 220,273 233,276 C245,279 258,282 260,290 C264,302 254,311 242,312 C223,312 205,320 193,324 C181,329 170,317 173,305 Z" />
+    </group>
+</vector>

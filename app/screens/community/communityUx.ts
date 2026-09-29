@@ -6,6 +6,27 @@ export const MAX_COMMENT_TEXT = 500;
 export const MAX_ALIAS_LENGTH = 24;
 export const MIN_ALIAS_LENGTH = 2;
 
+export function communityCommentCount(post: {commentsCount?: number; comments?: unknown[]}) {
+  const backendCount = Number(post.commentsCount);
+  if (Number.isFinite(backendCount) && backendCount >= 0) return Math.floor(backendCount);
+  return Array.isArray(post.comments) ? post.comments.length : 0;
+}
+
+export function formatCommunityCount(value: number) {
+  const count = Math.max(0, Math.floor(Number(value) || 0));
+  if (count < 1000) return String(count);
+  if (count < 1_000_000) {
+    const compact = Math.round((count / 1000) * 10) / 10;
+    return `${String(compact).replace(/\.0$/, '')}k`;
+  }
+  if (count < 1_000_000_000) {
+    const compact = Math.round((count / 1_000_000) * 10) / 10;
+    return `${String(compact).replace(/\.0$/, '')}M`;
+  }
+  const compact = Math.round((count / 1_000_000_000) * 10) / 10;
+  return `${String(compact).replace(/\.0$/, '')}B`;
+}
+
 export type JoinMode = 'open' | 'approval' | 'invite-only';
 export type ContentVisibility = 'public' | 'members';
 export const COMMUNITY_CREATION_JOIN_MODES: JoinMode[] = ['open', 'approval'];

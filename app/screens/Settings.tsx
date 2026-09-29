@@ -69,6 +69,12 @@ const sections: SettingsSection[] = [
     ],
   },
   {
+    title: 'Notifications',
+    actions: [
+      {key: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications'},
+    ],
+  },
+  {
     title: 'Legal',
     actions: [
       {key: 'privacy-policy', label: 'Privacy Policy', icon: 'shield-checkmark-outline', url: LINKS.privacy},

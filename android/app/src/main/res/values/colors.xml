@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="touch_notification_accent">#EC0C7A</color>
     <color name="splash_background">#FFF6F9</color>
     <color name="splash_text">#32111F</color>
     <color name="splash_muted_text">#6B4B58</color>

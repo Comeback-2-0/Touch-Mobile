@@ -34,7 +34,7 @@ export default function ProfileStack() {
        <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
-        options={{ headerTitle: "Notifications" }}
+        options={{ headerShown: false }}
       />
        <Stack.Screen
         name="Theme"

@@ -10,9 +10,25 @@ import {
   progressiveCommentItems,
   communityJoinActionLabel,
   communityJoinHeaderLabel,
+  communityCommentCount,
+  formatCommunityCount,
 } from '../app/screens/community/communityUx';
 
 describe('community comment helpers', () => {
+  it('uses the backend total comment count without requiring comments to be loaded', () => {
+    expect(communityCommentCount({commentsCount: 12, comments: []})).toBe(12);
+    expect(communityCommentCount({comments: [{}, {}]})).toBe(2);
+  });
+
+  it('formats large engagement counts compactly', () => {
+    expect(formatCommunityCount(0)).toBe('0');
+    expect(formatCommunityCount(999)).toBe('999');
+    expect(formatCommunityCount(1000)).toBe('1k');
+    expect(formatCommunityCount(1250)).toBe('1.3k');
+    expect(formatCommunityCount(299563)).toBe('299.6k');
+    expect(formatCommunityCount(1000000)).toBe('1M');
+  });
+
   it('counts nested replies', () => {
     expect(countThreadComments([{replies: [{}, {}]}, {replies: []}])).toBe(4);
   });
