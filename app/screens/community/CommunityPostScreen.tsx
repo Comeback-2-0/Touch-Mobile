@@ -295,7 +295,9 @@ export default function CommunityPostScreen() {
   const [comment, setComment] = useState('');
   const [alias, setAlias] = useState('');
   const [aliasLocked, setAliasLocked] = useState(false);
+  const [isPostOwner, setIsPostOwner] = useState(false);
   const [aliasEditing, setAliasEditing] = useState(false);
+  const [aliasConfirmOpen, setAliasConfirmOpen] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
   const [sort, setSort] = useState<'time' | 'latest' | 'top'>('top');
   const [topOrderIds, setTopOrderIds] = useState<string[]>([]);
@@ -395,6 +397,7 @@ export default function CommunityPostScreen() {
       const response = await api.get(`${base}`);
       setPost(response.data.post);
       if (response.data.post?.viewerAlias) setAlias(response.data.post.viewerAlias);
+      setIsPostOwner(Boolean(response.data.post?.viewerIsPostOwner));
       setAliasLocked(Boolean(response.data.post?.viewerAliasLocked));
     } catch (err: any) {
       setPost(null);
@@ -438,7 +441,7 @@ export default function CommunityPostScreen() {
   }, [post, sort, topOrderIds]);
   const visibleComments = comments.slice(0, visibleCommentCount);
   const commentCount = Number(post?.commentsCount ?? countThreadComments(comments));
-  const aliasConflict = aliasConflictOnPost(alias, post);
+  const aliasConflict = isPostOwner ? '' : aliasConflictOnPost(alias, post);
   const showAliasBar = composerFocused || Boolean(comment.trim()) || aliasEditing;
   const quoted = replyingTo?.reply || replyingTo?.comment;
 
@@ -468,6 +471,7 @@ export default function CommunityPostScreen() {
     (incoming: any) => {
       setPost((current: any) => mergeThread(current, incoming));
       if (incoming?.viewerAlias) setAlias(incoming.viewerAlias);
+      if (typeof incoming?.viewerIsPostOwner === 'boolean') setIsPostOwner(incoming.viewerIsPostOwner);
       if (typeof incoming?.viewerAliasLocked === 'boolean') setAliasLocked(incoming.viewerAliasLocked);
     },
     [],
@@ -544,14 +548,7 @@ export default function CommunityPostScreen() {
 
   const sendComment = () => {
     if (!aliasLocked) {
-      Alert.alert(
-        'Confirm alias',
-        `Continue with ${alias || 'anonymous'}? You won't be able to change it later on this post.`,
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {text: 'Continue', onPress: submitComment},
-        ],
-      );
+      setAliasConfirmOpen(true);
       return;
     }
     void submitComment();
@@ -994,9 +991,37 @@ export default function CommunityPostScreen() {
           {showAliasBar ? (
             <View style={styles.aliasBar}>
               <View style={styles.aliasHeaderRow}>
-                <Text style={styles.aliasBarText} accessibilityLabel={`Commenting as ${alias}`}>
-                  Commenting as {alias || 'anonymous'}
-                </Text>
+                {aliasEditing && !aliasLocked && !isPostOwner ? (
+                  <TextInput
+                    accessibilityLabel="Comment alias"
+                    value={alias}
+                    onChangeText={setAlias}
+                    maxLength={MAX_ALIAS_LENGTH}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    style={[styles.aliasBarText, styles.aliasInput]}
+                  />
+                ) : (
+                  <View style={styles.aliasIdentity}>
+                    <Text style={styles.aliasEyebrow}>COMMENTING AS</Text>
+                    <Text style={styles.aliasValue} accessibilityLabel={`Commenting as ${alias}`}>
+                      {alias || 'anonymous'}
+                    </Text>
+                  </View>
+                )}
+                {!aliasLocked && !isPostOwner ? (
+                  <Pressable
+                    onPress={() => setAliasEditing(current => !current)}
+                    accessibilityRole="button"
+                    accessibilityLabel={aliasEditing ? 'Done editing alias' : 'Edit alias'}
+                    style={styles.aliasDone}>
+                    <Feather
+                      name={aliasEditing ? 'check' : 'edit-2'}
+                      size={18}
+                      color={pastelColors.accent}
+                    />
+                  </Pressable>
+                ) : null}
                 <Text
                   testID="comment-character-counter"
                   style={styles.counter}
@@ -1135,6 +1160,18 @@ export default function CommunityPostScreen() {
         </Pressable>
       </Modal>
 
+      <CommunityConfirmSheet
+        visible={aliasConfirmOpen}
+        title="Confirm your alias"
+        message={`You’ll comment as ${alias || 'anonymous'} on this post. You can’t change it later.`}
+        confirmLabel="Continue"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setAliasConfirmOpen(false);
+          submitComment();
+        }}
+        onCancel={() => setAliasConfirmOpen(false)}
+      />
       <CommunityConfirmSheet
         visible={privateShareOpen}
         title="Private post"
@@ -1418,6 +1455,19 @@ const styles = StyleSheet.create({
   },
   aliasBar: {paddingHorizontal: 4, marginBottom: 6},
   aliasHeaderRow: {flexDirection: 'row', alignItems: 'center', minHeight: 32},
+  aliasIdentity: {flex: 1},
+  aliasEyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.1,
+    fontWeight: '900',
+    color: pastelColors.auth.mutedText,
+  },
+  aliasValue: {
+    marginTop: 2,
+    fontSize: 16,
+    fontWeight: '900',
+    color: pastelColors.accent,
+  },
   aliasTap: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32},
   aliasBarText: {flex: 1, fontWeight: '800', color: pastelColors.auth.deepText},
   aliasEditRow: {flexDirection: 'row', alignItems: 'center', gap: 8},

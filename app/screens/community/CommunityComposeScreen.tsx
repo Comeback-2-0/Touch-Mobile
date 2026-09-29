@@ -29,6 +29,7 @@ import {
   suggestCommunityAlias,
 } from './communityUx';
 import {useKeyboardAwareScroll} from './communityKeyboard';
+import CommunityConfirmSheet from './CommunityConfirmSheet';
 
 type Route = RouteProp<CommunityStackParamList, 'CommunityCompose'>;
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
@@ -47,6 +48,7 @@ export default function CommunityComposeScreen() {
   const [text, setText] = useState('');
   const [media, setMedia] = useState<any>(null);
   const [sending, setSending] = useState(false);
+  const [aliasConfirmOpen, setAliasConfirmOpen] = useState(false);
   const [promptIndex, setPromptIndex] = useState(0);
   const {
     scrollRef,
@@ -122,6 +124,11 @@ export default function CommunityComposeScreen() {
 
   const submit = async () => {
     if (!canSubmit || sending) return;
+    setAliasConfirmOpen(true);
+  };
+
+  const submitConfirmed = async () => {
+    if (!canSubmit || sending) return;
     setSending(true);
     try {
       const form = new FormData();
@@ -187,7 +194,7 @@ export default function CommunityComposeScreen() {
             </Text>
           </View>
 
-          <Text style={styles.label}>Posting as</Text>
+          <Text style={styles.aliasLabel}>YOUR POST ALIAS</Text>
           <TextInput
             accessibilityLabel="Editable alias"
             value={alias}
@@ -200,6 +207,7 @@ export default function CommunityComposeScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
+          <Text style={styles.aliasHint}>This is the name people will see on your post and comments.</Text>
           {aliasError ? <Text style={styles.aliasError}>{aliasError}</Text> : null}
 
           {media ? (
@@ -271,6 +279,18 @@ export default function CommunityComposeScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+      <CommunityConfirmSheet
+        visible={aliasConfirmOpen}
+        title="Confirm your post alias"
+        message={`Your post and comments will appear as ${trimmedAlias}. You can’t change this alias later.`}
+        confirmLabel="Post"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setAliasConfirmOpen(false);
+          submitConfirmed();
+        }}
+        onCancel={() => setAliasConfirmOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -315,6 +335,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: pastelColors.auth.deepText,
   },
+  aliasLabel: {
+    marginBottom: 8,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    fontWeight: '900',
+    color: pastelColors.auth.mutedText,
+  },
   aliasInput: {
     minHeight: 48,
     paddingHorizontal: 14,
@@ -326,6 +353,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   aliasError: {marginTop: 6, color: pastelColors.error, fontWeight: '800', fontSize: 12},
+  aliasHint: {
+    marginTop: 6,
+    color: pastelColors.auth.mutedText,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
   previewTile: {
     marginTop: 14,
     alignSelf: 'center',
