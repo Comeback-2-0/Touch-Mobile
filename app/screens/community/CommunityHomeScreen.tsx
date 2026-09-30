@@ -49,6 +49,70 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 type Route = RouteProp<CommunityStackParamList, 'CommunityHome'>;
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
+
+function CommunityInfoAlert({
+  community,
+  visible,
+  onClose,
+}: {
+  community: any;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const name = community?.name || 'Community';
+  const description = community?.description?.trim() || 'An anonymous place to connect.';
+  const members = Number(community?.membersCount || 0);
+  const rules = splitRules(community?.rules || '', 12);
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.infoOverlay}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close community information"
+          style={styles.infoBackdrop}
+          onPress={onClose}
+        />
+        <View style={styles.infoAlert} accessibilityViewIsModal>
+          {community?.image ? (
+            <Image source={{uri: community.image}} style={styles.infoAvatar} />
+          ) : (
+            <View style={[styles.infoAvatar, styles.infoAvatarFallback]}>
+              <Text style={styles.infoAvatarText}>{name.slice(0, 1).toUpperCase()}</Text>
+            </View>
+          )}
+          <Text style={styles.infoName} maxFontSizeMultiplier={1.25}>
+            {name}
+          </Text>
+          <View style={styles.infoSectionRow}>
+            <Text style={styles.infoSectionLabel}>DESCRIPTION</Text>
+            <Text style={styles.infoMembers}>{members} {members === 1 ? 'member' : 'members'}</Text>
+          </View>
+          <ScrollView
+            style={styles.infoScroll}
+            contentContainerStyle={styles.infoScrollContent}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled>
+            <Text style={styles.infoDescription} maxFontSizeMultiplier={1.35}>
+              {description}
+            </Text>
+            <Text style={styles.infoRulesLabel}>RULES</Text>
+            {rules.length ? (
+              <View style={styles.infoRulesBox}>
+                {rules.map((rule, index) => (
+                  <Text key={`${index}-${rule}`} style={styles.infoRule} maxFontSizeMultiplier={1.3}>
+                    {index + 1}. {rule}
+                  </Text>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.infoEmptyRules}>No community rules have been added yet.</Text>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 type Post = {
   id: string;
   alias: string;
@@ -129,6 +193,7 @@ export default function CommunityHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [communityInfoOpen, setCommunityInfoOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
@@ -206,10 +271,7 @@ export default function CommunityHomeScreen() {
   }, [firstUnreadPostId, posts]);
 
   const showCommunityInfo = () => {
-    Alert.alert(community.name, community.description || 'An anonymous space to speak freely and safely.', [
-      ...(String(community.rules || '').trim() ? [{text: `Rules: ${splitRules(community.rules, 12).join(' • ')}`, style: 'default' as const}] : []),
-      {text: 'Close', style: 'cancel'},
-    ]);
+    setCommunityInfoOpen(true);
   };
 
   const scrollToLatest = useCallback((animated = false) => {
@@ -900,12 +962,90 @@ export default function CommunityHomeScreen() {
         onConfirm={blockThisCommunity}
         onCancel={() => setBlockConfirmOpen(false)}
       />
+      <CommunityInfoAlert
+        community={community}
+        visible={communityInfoOpen}
+        onClose={() => setCommunityInfoOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: pastelColors.auth.background},
+  infoOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
+  infoBackdrop: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(50, 17, 31, 0.42)'},
+  infoAlert: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '86%',
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 22,
+    borderRadius: 24,
+    backgroundColor: pastelColors.auth.background,
+    shadowColor: '#32111F',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 10,
+  },
+  infoAvatar: {height: 104, width: 104, borderRadius: 20, alignSelf: 'center'},
+  infoAvatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: pastelColors.auth.primaryOverlay,
+  },
+  infoAvatarText: {fontSize: 32, fontWeight: '900', color: pastelColors.auth.deepText},
+  infoName: {
+    marginTop: 12,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '900',
+    color: pastelColors.auth.deepText,
+  },
+  infoSectionRow: {
+    marginTop: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  infoSectionLabel: {
+    fontSize: 11,
+    letterSpacing: 1.1,
+    fontWeight: '900',
+    color: pastelColors.auth.mutedText,
+  },
+  infoMembers: {color: pastelColors.auth.mutedText, fontSize: 12, fontWeight: '700'},
+  infoScroll: {
+    maxHeight: 390,
+    marginTop: 8,
+    borderRadius: 16,
+    backgroundColor: pastelColors.auth.primaryOverlay,
+  },
+  infoScrollContent: {padding: 16},
+  infoDescription: {
+    color: pastelColors.auth.deepText,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
+  },
+  infoRulesLabel: {
+    marginTop: 22,
+    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '900',
+    color: pastelColors.auth.deepText,
+  },
+  infoRulesBox: {gap: 10},
+  infoRule: {color: pastelColors.auth.deepText, fontSize: 15, lineHeight: 22, fontWeight: '600'},
+  infoEmptyRules: {color: pastelColors.auth.mutedText, fontWeight: '600'},
   header: {
     padding: 18,
     flexDirection: 'row',
