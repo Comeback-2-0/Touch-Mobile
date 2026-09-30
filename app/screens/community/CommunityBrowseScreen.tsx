@@ -568,6 +568,8 @@ const styles = StyleSheet.create({
   },
   previewSheet: {
     width: '100%',
+    height: '52%',
+    minHeight: 500,
     maxWidth: 560,
     maxHeight: '86%',
     paddingHorizontal: 20,
@@ -594,7 +596,7 @@ const styles = StyleSheet.create({
     color: pastelColors.auth.mutedText,
   },
   previewDescriptionScroll: {
-    maxHeight: 240,
+    flex: 1,
     borderRadius: 16,
     backgroundColor: pastelColors.auth.primaryOverlay,
   },
@@ -606,11 +608,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   previewSkeletonContent: {
-    maxHeight: 150,
+    flex: 1,
+    minHeight: 180,
     padding: 16,
     borderRadius: 16,
     backgroundColor: pastelColors.auth.primaryOverlay,
     gap: 12,
+    justifyContent: 'center',
   },
   previewSkeletonLine: {
     height: 14,
