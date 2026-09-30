@@ -93,15 +93,17 @@ function CommunityInfoAlert({
             contentContainerStyle={styles.infoScrollContent}
             showsVerticalScrollIndicator
             nestedScrollEnabled>
-            <Text style={styles.infoDescription} maxFontSizeMultiplier={1.35}>
-              {description}
-            </Text>
+            <View style={styles.infoDescriptionBox}>
+              <Text style={styles.infoDescription} maxFontSizeMultiplier={1.35}>
+                {description}
+              </Text>
+            </View>
             <Text style={styles.infoRulesLabel}>RULES</Text>
             {rules.length ? (
               <View style={styles.infoRulesBox}>
                 {rules.map((rule, index) => (
                   <Text key={`${index}-${rule}`} style={styles.infoRule} maxFontSizeMultiplier={1.3}>
-                    {index + 1}. {rule}
+                    {rule}
                   </Text>
                 ))}
               </View>
@@ -664,6 +666,12 @@ export default function CommunityHomeScreen() {
           onClose={() => setSheetOpen(false)}
           onSubmit={sendRequest}
         />
+        <CommunityWithdrawRequestAlert
+          community={community}
+          visible={withdrawRequestOpen}
+          onClose={() => setWithdrawRequestOpen(false)}
+          onConfirm={confirmAndCancelRequest}
+        />
       </SafeAreaView>
     );
   }
@@ -1033,7 +1041,7 @@ const styles = StyleSheet.create({
     maxHeight: 390,
     marginTop: 8,
     borderRadius: 16,
-    backgroundColor: pastelColors.auth.primaryOverlay,
+    backgroundColor: 'transparent',
   },
   infoScrollContent: {padding: 16},
   infoDescription: {
@@ -1042,6 +1050,11 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '600',
   },
+  infoDescriptionBox: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: pastelColors.auth.primaryOverlay,
+  },
   infoRulesLabel: {
     marginTop: 22,
     marginBottom: 8,
@@ -1049,7 +1062,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: pastelColors.auth.deepText,
   },
-  infoRulesBox: {gap: 10},
+  infoRulesBox: {gap: 10, padding: 16, borderRadius: 16, backgroundColor: pastelColors.auth.primaryOverlay},
   infoRule: {color: pastelColors.auth.deepText, fontSize: 15, lineHeight: 22, fontWeight: '600'},
   infoEmptyRules: {color: pastelColors.auth.mutedText, fontWeight: '600'},
   header: {
