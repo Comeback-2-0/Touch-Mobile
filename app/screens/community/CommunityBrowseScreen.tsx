@@ -71,7 +71,7 @@ function CommunityPreviewSheet({
   const description = community.description?.trim() || 'An anonymous place to connect.';
   const members = Number(community.membersCount || 0);
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.previewOverlay}>
         <Pressable
           accessibilityRole="button"
@@ -80,7 +80,6 @@ function CommunityPreviewSheet({
           onPress={onClose}
         />
         <View style={styles.previewSheet} accessibilityViewIsModal>
-          <View style={styles.previewHandle} />
           <View style={styles.previewHeader}>
             <CommunityAvatar name={community.name} image={community.image} />
             <View style={styles.previewIdentity}>
@@ -508,27 +507,31 @@ export default function CommunityBrowseScreen() {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: pastelColors.auth.background},
-  previewOverlay: {flex: 1, justifyContent: 'flex-end'},
+  previewOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
   previewBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(50, 17, 31, 0.42)',
   },
   previewSheet: {
-    maxHeight: '82%',
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '86%',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 22,
     paddingBottom: 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderRadius: 24,
     backgroundColor: pastelColors.auth.background,
-  },
-  previewHandle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4,
-    borderRadius: 4,
-    marginBottom: 18,
-    backgroundColor: pastelColors.auth.glassBorder,
+    shadowColor: '#32111F',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 10,
   },
   previewHeader: {flexDirection: 'row', alignItems: 'center'},
   previewIdentity: {flex: 1, minWidth: 0},
