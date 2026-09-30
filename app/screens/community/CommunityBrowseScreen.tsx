@@ -27,6 +27,7 @@ import {
 } from './communityUx';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import PreviewMarqueeText from './PreviewMarqueeText';
+import CommunityWithdrawRequestAlert from './CommunityWithdrawRequestAlert';
 
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
 type BrowseMode = 'trending' | 'mine';
@@ -62,14 +63,20 @@ function CommunityPreviewSheet({
   community,
   onClose,
   onOpen,
+  onRequest,
+  onWithdraw,
 }: {
-  community: CommunitySummary | null;
+  community: (CommunitySummary & {membership?: {status?: string}; joinRequest?: {status?: string} | null}) | null;
   onClose: () => void;
   onOpen: () => void;
+  onRequest: () => void;
+  onWithdraw: () => void;
 }) {
   if (!community) return null;
   const description = community.description?.trim() || 'An anonymous place to connect.';
   const members = Number(community.membersCount || 0);
+  const joined = community.membership?.status === 'active';
+  const pending = community.joinRequest?.status === 'pending';
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.previewOverlay}>
@@ -91,7 +98,7 @@ function CommunityPreviewSheet({
               </Text>
             </View>
           </View>
-          <Text style={styles.previewSectionLabel}>ABOUT THIS COMMUNITY</Text>
+          <Text style={styles.previewSectionLabel}>DESCRIPTION</Text>
           <ScrollView
             style={styles.previewDescriptionScroll}
             contentContainerStyle={styles.previewDescriptionContent}
@@ -102,19 +109,17 @@ function CommunityPreviewSheet({
             </Text>
           </ScrollView>
           <View style={styles.previewActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close community preview"
-              onPress={onClose}
-              style={styles.previewSecondaryButton}>
+            {joined ? <Pressable accessibilityRole="button" accessibilityLabel="Close community preview" onPress={onClose} style={styles.previewSecondaryButton}>
               <Text style={styles.previewSecondaryText}>Close</Text>
-            </Pressable>
+            </Pressable> : <Pressable accessibilityRole="button" accessibilityLabel={`Open ${community.name}`} onPress={onOpen} style={styles.previewSecondaryButton}>
+              <Text style={styles.previewSecondaryText}>Open Community</Text>
+            </Pressable>}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Open ${community.name}`}
-              onPress={onOpen}
-              style={styles.previewPrimaryButton}>
-              <Text style={styles.previewPrimaryText}>Open community</Text>
+              accessibilityLabel={joined ? `Open ${community.name}` : pending ? 'Already requested' : 'Request to join'}
+              onPress={joined ? onOpen : pending ? onWithdraw : onRequest}
+              style={[styles.previewPrimaryButton, pending && styles.previewPendingButton, !joined && !pending && styles.previewRequestButton]}>
+              <Text style={[styles.previewPrimaryText, pending && styles.previewPendingText]}>{joined ? 'Open Community' : pending ? 'Already Requested' : 'Request to Join'}</Text>
             </Pressable>
           </View>
         </View>
@@ -189,7 +194,8 @@ export default function CommunityBrowseScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [previewCommunity, setPreviewCommunity] = useState<CommunitySummary | null>(null);
+  const [previewCommunity, setPreviewCommunity] = useState<(CommunitySummary & {membership?: {status?: string}; joinRequest?: {status?: string} | null}) | null>(null);
+  const [withdrawRequestOpen, setWithdrawRequestOpen] = useState(false);
   const searchProgress = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
   const blockedIds = useBlockedCommunitiesStore(state => state.blockedIds);
@@ -414,9 +420,15 @@ export default function CommunityBrowseScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${item.name}`}
                 delayLongPress={280}
-                onLongPress={() => {
+                onLongPress={async () => {
                   setPreviewId(id);
                   setPreviewCommunity(item);
+                  try {
+                    const response = await api.get(`/communities/${id}`);
+                    setPreviewCommunity({...item, ...(response.data.community || {}), membership: response.data.membership, joinRequest: response.data.joinRequest});
+                  } catch {
+                    // Keep the card data visible if the detail request is unavailable.
+                  }
                 }}
                 onPress={() => {
                   setPreviewId(null);
@@ -495,10 +507,31 @@ export default function CommunityBrowseScreen() {
       <CommunityPreviewSheet
         community={previewCommunity}
         onClose={() => setPreviewCommunity(null)}
+        onRequest={() => {
+          const community = previewCommunity;
+          setPreviewCommunity(null);
+          if (community) navigation.navigate('CommunityHome', {community});
+        }}
+        onWithdraw={() => setWithdrawRequestOpen(true)}
         onOpen={() => {
           const community = previewCommunity;
           setPreviewCommunity(null);
           if (community) navigation.navigate('CommunityHome', {community});
+        }}
+      />
+      <CommunityWithdrawRequestAlert
+        community={previewCommunity}
+        visible={withdrawRequestOpen}
+        onClose={() => setWithdrawRequestOpen(false)}
+        onConfirm={async () => {
+          if (!previewCommunity) return;
+          try {
+            await api.delete(`/communities/${previewCommunity.id || previewCommunity._id}/join-requests/me`);
+            setPreviewCommunity({...previewCommunity, joinRequest: null});
+            setWithdrawRequestOpen(false);
+          } catch {
+            // Keep the confirmation open so the user can retry.
+          }
         }}
       />
     </SafeAreaView>
@@ -577,6 +610,9 @@ const styles = StyleSheet.create({
     backgroundColor: pastelColors.accent,
   },
   previewPrimaryText: {color: pastelColors.white, fontWeight: '900', fontSize: 15},
+  previewRequestButton: {backgroundColor: pastelColors.white, borderWidth: 1.5, borderColor: pastelColors.accent},
+  previewPendingButton: {backgroundColor: '#D8D8DE'},
+  previewPendingText: {color: '#4E4E59'},
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
