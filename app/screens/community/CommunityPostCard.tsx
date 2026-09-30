@@ -204,21 +204,25 @@ export default function CommunityPostCard({
             <Pressable onPress={handleMediaPress} accessibilityRole="text">
               <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
                 {captionExpanded ? caption.trim() : collapsedCaption}
-                {!captionExpanded && captionLineCount > captionLineLimit ? <Text onPress={() => {
-                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                  setCaptionExpanded(true);
-                }} style={styles.inlineMore}>... more</Text> : null}
               </Text>
             </Pressable>
           ) : (
             <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
               {captionExpanded ? caption.trim() : collapsedCaption}
-              {!captionExpanded && captionLineCount > captionLineLimit ? <Text onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setCaptionExpanded(true);
-              }} style={styles.inlineMore}>... more</Text> : null}
             </Text>
           )}
+          {!captionExpanded && captionLineCount > captionLineLimit ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Show more caption"
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setCaptionExpanded(true);
+              }}
+              style={styles.inlineMoreButton}>
+              <Text style={styles.inlineMore}>... more</Text>
+            </Pressable>
+          ) : null}
           {captionLineCount > captionLineLimit && captionExpanded ? (
             <Pressable
               accessibilityRole="button"
@@ -332,6 +336,13 @@ const styles = StyleSheet.create({
   measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
   showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
   showMoreText: {color: pastelColors.accent, fontWeight: '900'},
+  inlineMoreButton: {
+    position: 'absolute',
+    right: 14,
+    bottom: 0,
+    paddingLeft: 6,
+    backgroundColor: pastelColors.auth.glassSurface,
+  },
   inlineMore: {color: pastelColors.accent, fontSize: 14, fontWeight: '900'},
   link: {
     paddingHorizontal: 14,
