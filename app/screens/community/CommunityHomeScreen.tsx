@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -60,6 +61,23 @@ function CommunityInfoAlert({
   visible: boolean;
   onClose: () => void;
 }) {
+  const avatarScale = React.useRef(new Animated.Value(0.55)).current;
+  const avatarLift = React.useRef(new Animated.Value(-28)).current;
+  const nameScale = React.useRef(new Animated.Value(0.82)).current;
+  const nameLift = React.useRef(new Animated.Value(-16)).current;
+  useEffect(() => {
+    if (!visible) return;
+    avatarScale.setValue(0.55);
+    avatarLift.setValue(-28);
+    nameScale.setValue(0.82);
+    nameLift.setValue(-16);
+    Animated.parallel([
+      Animated.spring(avatarScale, {toValue: 1, useNativeDriver: true, damping: 16, stiffness: 180}),
+      Animated.spring(avatarLift, {toValue: 0, useNativeDriver: true, damping: 16, stiffness: 180}),
+      Animated.spring(nameScale, {toValue: 1, useNativeDriver: true, damping: 18, stiffness: 170}),
+      Animated.spring(nameLift, {toValue: 0, useNativeDriver: true, damping: 18, stiffness: 170}),
+    ]).start();
+  }, [avatarLift, avatarScale, nameLift, nameScale, visible]);
   const name = community?.name || 'Community';
   const description = community?.description?.trim() || 'An anonymous place to connect.';
   const members = Number(community?.membersCount || 0);
@@ -75,15 +93,15 @@ function CommunityInfoAlert({
         />
         <View style={styles.infoAlert} accessibilityViewIsModal>
           {community?.image ? (
-            <Image source={{uri: community.image}} style={styles.infoAvatar} />
+            <Animated.Image source={{uri: community.image}} style={[styles.infoAvatar, {transform: [{translateY: avatarLift}, {scale: avatarScale}]}]} />
           ) : (
-            <View style={[styles.infoAvatar, styles.infoAvatarFallback]}>
+            <Animated.View style={[styles.infoAvatar, styles.infoAvatarFallback, {transform: [{translateY: avatarLift}, {scale: avatarScale}]}]}>
               <Text style={styles.infoAvatarText}>{name.slice(0, 1).toUpperCase()}</Text>
-            </View>
+            </Animated.View>
           )}
-          <Text style={styles.infoName} maxFontSizeMultiplier={1.25}>
+          <Animated.Text style={[styles.infoName, {transform: [{translateY: nameLift}, {scale: nameScale}]}]} maxFontSizeMultiplier={1.25}>
             {name}
-          </Text>
+          </Animated.Text>
           <View style={styles.infoSectionRow}>
             <Text style={styles.infoSectionLabel}>DESCRIPTION</Text>
             <Text style={styles.infoMembers}>{members} {members === 1 ? 'member' : 'members'}</Text>
@@ -686,7 +704,14 @@ export default function CommunityHomeScreen() {
           style={styles.backButton}>
           <Feather name="arrow-left" size={22} color={pastelColors.auth.deepText} />
         </Pressable>
-        <Pressable onPress={showCommunityInfo} onLongPress={showCommunityInfo} style={styles.headButton}>
+        <Pressable onPress={showCommunityInfo} onLongPress={showCommunityInfo} style={styles.headButton} accessibilityRole="button" accessibilityLabel="Open community information">
+          {community?.image ? (
+            <Image source={{uri: community.image}} style={styles.headerAvatar} />
+          ) : (
+            <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
+              <Text style={styles.headerAvatarText}>{String(community.name || 'C').slice(0, 1).toUpperCase()}</Text>
+            </View>
+          )}
           <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.head, {flex: 1}]}>
             {community.name}
           </Text>
@@ -1073,6 +1098,9 @@ const styles = StyleSheet.create({
   },
   head: {flexShrink: 1, minWidth: 0, fontSize: 18, fontWeight: '900', color: pastelColors.auth.deepText},
   headButton: {flex: 1, minWidth: 0, paddingVertical: 8},
+  headerAvatar: {width: 34, height: 34, borderRadius: 10, marginRight: 10},
+  headerAvatarFallback: {alignItems: 'center', justifyContent: 'center', backgroundColor: pastelColors.auth.primaryOverlay},
+  headerAvatarText: {fontWeight: '900', color: pastelColors.auth.deepText},
   iconButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
   joinHeaderButton: {
     minHeight: 36,
