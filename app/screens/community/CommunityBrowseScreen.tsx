@@ -1,11 +1,12 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   AccessibilityInfo,
-  Alert,
   Animated,
   FlatList,
   Image,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -54,6 +55,72 @@ function CommunityAvatar({name, image}: {name: string; image?: string}) {
         {communityInitial(name)}
       </Text>
     </View>
+  );
+}
+
+function CommunityPreviewSheet({
+  community,
+  onClose,
+  onOpen,
+}: {
+  community: CommunitySummary | null;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  if (!community) return null;
+  const description = community.description?.trim() || 'An anonymous place to connect.';
+  const members = Number(community.membersCount || 0);
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.previewOverlay}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close community preview"
+          style={styles.previewBackdrop}
+          onPress={onClose}
+        />
+        <View style={styles.previewSheet} accessibilityViewIsModal>
+          <View style={styles.previewHandle} />
+          <View style={styles.previewHeader}>
+            <CommunityAvatar name={community.name} image={community.image} />
+            <View style={styles.previewIdentity}>
+              <Text style={styles.previewName} maxFontSizeMultiplier={1.3}>
+                {community.name}
+              </Text>
+              <Text style={styles.previewMembers} maxFontSizeMultiplier={1.3}>
+                {members} {members === 1 ? 'member' : 'members'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.previewSectionLabel}>ABOUT THIS COMMUNITY</Text>
+          <ScrollView
+            style={styles.previewDescriptionScroll}
+            contentContainerStyle={styles.previewDescriptionContent}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled>
+            <Text style={styles.previewDescription} maxFontSizeMultiplier={1.35}>
+              {description}
+            </Text>
+          </ScrollView>
+          <View style={styles.previewActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close community preview"
+              onPress={onClose}
+              style={styles.previewSecondaryButton}>
+              <Text style={styles.previewSecondaryText}>Close</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${community.name}`}
+              onPress={onOpen}
+              style={styles.previewPrimaryButton}>
+              <Text style={styles.previewPrimaryText}>Open community</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -123,6 +190,7 @@ export default function CommunityBrowseScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewCommunity, setPreviewCommunity] = useState<CommunitySummary | null>(null);
   const searchProgress = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
   const blockedIds = useBlockedCommunitiesStore(state => state.blockedIds);
@@ -138,6 +206,7 @@ export default function CommunityBrowseScreen() {
 
   useEffect(() => {
     setPreviewId(null);
+    setPreviewCommunity(null);
   }, [mode, query]);
 
   useEffect(() => {
@@ -330,7 +399,10 @@ export default function CommunityBrowseScreen() {
           keyExtractor={item => item.id || item._id}
           refreshing={refreshing}
           onRefresh={() => load({refresh: true})}
-          onScrollBeginDrag={() => setPreviewId(null)}
+          onScrollBeginDrag={() => {
+            setPreviewId(null);
+            setPreviewCommunity(null);
+          }}
           contentContainerStyle={visibleCommunities.length ? styles.list : styles.empty}
           ListHeaderComponent={listHeader}
           renderItem={({item, index}) => {
@@ -345,10 +417,7 @@ export default function CommunityBrowseScreen() {
                 delayLongPress={280}
                 onLongPress={() => {
                   setPreviewId(id);
-                  Alert.alert(item.name, item.description?.trim() || 'An anonymous place to connect.', [
-                    {text: 'Close', style: 'cancel'},
-                    {text: 'Open community', onPress: () => navigation.navigate('CommunityHome', {community: item})},
-                  ]);
+                  setPreviewCommunity(item);
                 }}
                 onPress={() => {
                   setPreviewId(null);
@@ -424,12 +493,87 @@ export default function CommunityBrowseScreen() {
         ]}>
         <Feather name="plus" size={26} color={pastelColors.white} />
       </Pressable>
+      <CommunityPreviewSheet
+        community={previewCommunity}
+        onClose={() => setPreviewCommunity(null)}
+        onOpen={() => {
+          const community = previewCommunity;
+          setPreviewCommunity(null);
+          if (community) navigation.navigate('CommunityHome', {community});
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: pastelColors.auth.background},
+  previewOverlay: {flex: 1, justifyContent: 'flex-end'},
+  previewBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(50, 17, 31, 0.42)',
+  },
+  previewSheet: {
+    maxHeight: '82%',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: pastelColors.auth.background,
+  },
+  previewHandle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 4,
+    borderRadius: 4,
+    marginBottom: 18,
+    backgroundColor: pastelColors.auth.glassBorder,
+  },
+  previewHeader: {flexDirection: 'row', alignItems: 'center'},
+  previewIdentity: {flex: 1, minWidth: 0},
+  previewName: {fontSize: 23, fontWeight: '900', color: pastelColors.auth.deepText},
+  previewMembers: {marginTop: 5, color: pastelColors.auth.mutedText, fontWeight: '700'},
+  previewSectionLabel: {
+    marginTop: 22,
+    marginBottom: 8,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    fontWeight: '900',
+    color: pastelColors.auth.mutedText,
+  },
+  previewDescriptionScroll: {
+    maxHeight: 240,
+    borderRadius: 16,
+    backgroundColor: pastelColors.auth.primaryOverlay,
+  },
+  previewDescriptionContent: {padding: 16},
+  previewDescription: {
+    color: pastelColors.auth.deepText,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
+  },
+  previewActions: {flexDirection: 'row', gap: 10, marginTop: 18},
+  previewSecondaryButton: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: pastelColors.auth.glassBorder,
+  },
+  previewSecondaryText: {color: pastelColors.auth.mutedText, fontWeight: '900', fontSize: 15},
+  previewPrimaryButton: {
+    flex: 1.4,
+    minHeight: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: pastelColors.accent,
+  },
+  previewPrimaryText: {color: pastelColors.white, fontWeight: '900', fontSize: 15},
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
