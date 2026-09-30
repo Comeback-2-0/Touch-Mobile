@@ -27,6 +27,7 @@ import type {CommunityStackParamList} from '../../navigation/CommunityStack';
 import CommunityJoinRequestSheet from './CommunityJoinRequestSheet';
 import CommunityPostCard from './CommunityPostCard';
 import CommunityConfirmSheet from './CommunityConfirmSheet';
+import CommunityWithdrawRequestAlert from './CommunityWithdrawRequestAlert';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import {
   communityErrorCopy,
@@ -194,6 +195,7 @@ export default function CommunityHomeScreen() {
   const [error, setError] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [communityInfoOpen, setCommunityInfoOpen] = useState(false);
+  const [withdrawRequestOpen, setWithdrawRequestOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
@@ -415,14 +417,12 @@ export default function CommunityHomeScreen() {
   };
 
   const confirmCancelRequest = () => {
-    Alert.alert(
-      'Cancel join request?',
-      'You can send another request later if you change your mind.',
-      [
-        {text: 'Keep request', style: 'cancel'},
-        {text: 'Cancel request', style: 'destructive', onPress: cancelRequest},
-      ],
-    );
+    setWithdrawRequestOpen(true);
+  };
+
+  const confirmAndCancelRequest = async () => {
+    setWithdrawRequestOpen(false);
+    await cancelRequest();
   };
 
   const toggleMute = async () => {
@@ -567,7 +567,7 @@ export default function CommunityHomeScreen() {
         <View style={styles.statusBox}>
           <Text style={styles.statusTitle}>Request sent</Text>
           <Text style={styles.copy}>Admins still need to approve you.</Text>
-          <Pressable onPress={cancelRequest} style={styles.secondaryButton}>
+          <Pressable onPress={confirmCancelRequest} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Cancel request</Text>
           </Pressable>
         </View>
@@ -966,6 +966,12 @@ export default function CommunityHomeScreen() {
         community={community}
         visible={communityInfoOpen}
         onClose={() => setCommunityInfoOpen(false)}
+      />
+      <CommunityWithdrawRequestAlert
+        community={community}
+        visible={withdrawRequestOpen}
+        onClose={() => setWithdrawRequestOpen(false)}
+        onConfirm={confirmAndCancelRequest}
       />
     </SafeAreaView>
   );
