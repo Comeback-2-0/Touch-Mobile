@@ -67,7 +67,13 @@ export default function CommunityPostCard({
   const hasText = Boolean(caption.trim());
   const [captionLineCount, setCaptionLineCount] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [collapsedCaption, setCollapsedCaption] = useState(caption.trim());
   const captionLineLimit = hasMedia ? 2 : 12;
+  useEffect(() => {
+    setCaptionExpanded(false);
+    setCaptionLineCount(0);
+    setCollapsedCaption(caption.trim());
+  }, [caption]);
   const lastTap = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -181,18 +187,39 @@ export default function CommunityPostCard({
         <View>
           <Text
             pointerEvents="none"
-            onTextLayout={event => setCaptionLineCount(event.nativeEvent.lines.length)}
+            onTextLayout={event => {
+              const lines = event.nativeEvent.lines.length;
+              setCaptionLineCount(lines);
+              if (!captionExpanded && lines > captionLineLimit && collapsedCaption === caption.trim()) {
+                const estimatedLength = Math.max(24, Math.floor(caption.trim().length * (captionLineLimit / lines) * 0.9));
+                const words = caption.trim().slice(0, estimatedLength).trim().split(/\s+/);
+                words.pop();
+                setCollapsedCaption(words.join(' '));
+              }
+            }}
             style={[styles.caption, !hasMedia && styles.textOnly, styles.measureCaption]}>
             {caption.trim()}
           </Text>
           {onDoubleTapLike ? (
             <Pressable onPress={handleMediaPress} accessibilityRole="text">
-              <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+              <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
+                {captionExpanded ? caption.trim() : collapsedCaption}
+                {!captionExpanded && captionLineCount > captionLineLimit ? <Text onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setCaptionExpanded(true);
+                }} style={styles.inlineMore}>... more</Text> : null}
+              </Text>
             </Pressable>
           ) : (
-            <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+            <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
+              {captionExpanded ? caption.trim() : collapsedCaption}
+              {!captionExpanded && captionLineCount > captionLineLimit ? <Text onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setCaptionExpanded(true);
+              }} style={styles.inlineMore}>... more</Text> : null}
+            </Text>
           )}
-          {captionLineCount > captionLineLimit ? (
+          {captionLineCount > captionLineLimit && captionExpanded ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={captionExpanded ? 'Show less' : 'Show full caption'}
@@ -305,6 +332,7 @@ const styles = StyleSheet.create({
   measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
   showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
   showMoreText: {color: pastelColors.accent, fontWeight: '900'},
+  inlineMore: {color: pastelColors.accent, fontSize: 14, fontWeight: '900'},
   link: {
     paddingHorizontal: 14,
     paddingBottom: 12,
