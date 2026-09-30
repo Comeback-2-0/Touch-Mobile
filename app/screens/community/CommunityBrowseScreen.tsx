@@ -61,12 +61,14 @@ function CommunityAvatar({name, image}: {name: string; image?: string}) {
 
 function CommunityPreviewSheet({
   community,
+  loading,
   onClose,
   onOpen,
   onRequest,
   onWithdraw,
 }: {
   community: (CommunitySummary & {membership?: {status?: string}; joinRequest?: {status?: string} | null}) | null;
+  loading: boolean;
   onClose: () => void;
   onOpen: () => void;
   onRequest: () => void;
@@ -99,16 +101,22 @@ function CommunityPreviewSheet({
             </View>
           </View>
           <Text style={styles.previewSectionLabel}>DESCRIPTION</Text>
-          <ScrollView
-            style={styles.previewDescriptionScroll}
-            contentContainerStyle={styles.previewDescriptionContent}
-            showsVerticalScrollIndicator
-            nestedScrollEnabled>
-            <Text style={styles.previewDescription} maxFontSizeMultiplier={1.35}>
-              {description}
-            </Text>
-          </ScrollView>
+          {loading ? <View style={styles.previewSkeletonContent}>
+            <View style={[styles.previewSkeletonLine, {width: '92%'}]} />
+            <View style={[styles.previewSkeletonLine, {width: '76%'}]} />
+            <View style={[styles.previewSkeletonLine, {width: '58%'}]} />
+          </View> : <ScrollView
+              style={styles.previewDescriptionScroll}
+              contentContainerStyle={styles.previewDescriptionContent}
+              showsVerticalScrollIndicator
+              nestedScrollEnabled>
+              <Text style={styles.previewDescription} maxFontSizeMultiplier={1.35}>{description}</Text>
+            </ScrollView>}
           <View style={styles.previewActions}>
+            {loading ? <>
+              <View style={[styles.previewSkeletonButton, {flex: 1}]} />
+              <View style={[styles.previewSkeletonButton, {flex: 1}]} />
+            </> : <>
             {joined ? <Pressable accessibilityRole="button" accessibilityLabel="Close community preview" onPress={onClose} style={styles.previewSecondaryButton}>
               <Text style={styles.previewSecondaryText}>Close</Text>
             </Pressable> : <Pressable accessibilityRole="button" accessibilityLabel={`Open ${community.name}`} onPress={onOpen} style={styles.previewSecondaryButton}>
@@ -121,6 +129,7 @@ function CommunityPreviewSheet({
               style={[styles.previewPrimaryButton, pending && styles.previewPendingButton, !joined && !pending && styles.previewRequestButton]}>
               <Text style={[styles.previewPrimaryText, pending && styles.previewPendingText]}>{joined ? 'Open Community' : pending ? 'Already Requested' : 'Request to Join'}</Text>
             </Pressable>
+            </>}
           </View>
         </View>
       </View>
@@ -195,6 +204,7 @@ export default function CommunityBrowseScreen() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [previewCommunity, setPreviewCommunity] = useState<(CommunitySummary & {membership?: {status?: string}; joinRequest?: {status?: string} | null}) | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [withdrawRequestOpen, setWithdrawRequestOpen] = useState(false);
   const searchProgress = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
@@ -212,6 +222,7 @@ export default function CommunityBrowseScreen() {
   useEffect(() => {
     setPreviewId(null);
     setPreviewCommunity(null);
+    setPreviewLoading(false);
   }, [mode, query]);
 
   useEffect(() => {
@@ -423,11 +434,14 @@ export default function CommunityBrowseScreen() {
                 onLongPress={async () => {
                   setPreviewId(id);
                   setPreviewCommunity(item);
+                  setPreviewLoading(true);
                   try {
                     const response = await api.get(`/communities/${id}`);
                     setPreviewCommunity({...item, ...(response.data.community || {}), membership: response.data.membership, joinRequest: response.data.joinRequest});
                   } catch {
                     // Keep the card data visible if the detail request is unavailable.
+                  } finally {
+                    setPreviewLoading(false);
                   }
                 }}
                 onPress={() => {
@@ -506,7 +520,8 @@ export default function CommunityBrowseScreen() {
       </Pressable>
       <CommunityPreviewSheet
         community={previewCommunity}
-        onClose={() => setPreviewCommunity(null)}
+        loading={previewLoading}
+        onClose={() => { setPreviewCommunity(null); setPreviewLoading(false); }}
         onRequest={() => {
           const community = previewCommunity;
           setPreviewCommunity(null);
@@ -589,6 +604,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '600',
+  },
+  previewSkeletonContent: {
+    maxHeight: 150,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: pastelColors.auth.primaryOverlay,
+    gap: 12,
+  },
+  previewSkeletonLine: {
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(128, 75, 98, 0.18)',
+  },
+  previewSkeletonButton: {
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: 'rgba(128, 75, 98, 0.16)',
   },
   previewActions: {flexDirection: 'row', gap: 10, marginTop: 18},
   previewSecondaryButton: {
