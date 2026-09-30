@@ -809,7 +809,6 @@ export default function CommunityHomeScreen() {
                 if (!item.likedByMe) engagePost(item.id, 'like');
               }}
               onSingleTap={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
-              onShowMore={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
               onMorePress={() => setPostMenuId(item.id)}
             />
             <View style={styles.feedActions}>

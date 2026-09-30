@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {
   Animated,
   Image,
+  LayoutAnimation,
   Linking,
   Pressable,
   StyleSheet,
@@ -36,7 +37,6 @@ type Props = {
   onDoubleTapLike?: () => void;
   onSingleTap?: () => void;
   onMorePress?: () => void;
-  onShowMore?: () => void;
 };
 
 function isVideo(media?: Media | null) {
@@ -61,12 +61,12 @@ export default function CommunityPostCard({
   onDoubleTapLike,
   onSingleTap,
   onMorePress,
-  onShowMore,
 }: Props) {
   const uri = media?.url || media?.uri;
   const hasMedia = Boolean(uri);
   const hasText = Boolean(caption.trim());
   const [captionLineCount, setCaptionLineCount] = useState(0);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
   const captionLineLimit = hasMedia ? 2 : 12;
   const lastTap = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,14 +187,21 @@ export default function CommunityPostCard({
           </Text>
           {onDoubleTapLike ? (
             <Pressable onPress={handleMediaPress} accessibilityRole="text">
-              <Text numberOfLines={captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+              <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
             </Pressable>
           ) : (
-            <Text numberOfLines={captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+            <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
           )}
-          {captionLineCount > captionLineLimit && onShowMore ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Open full post" onPress={onShowMore} style={styles.showMoreButton}>
-              <Text style={styles.showMoreText}>Show more</Text>
+          {captionLineCount > captionLineLimit ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={captionExpanded ? 'Show less' : 'Show full caption'}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setCaptionExpanded(current => !current);
+              }}
+              style={styles.showMoreButton}>
+              <Text style={styles.showMoreText}>{captionExpanded ? 'Show less' : 'Show more'}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -282,21 +289,21 @@ const styles = StyleSheet.create({
   },
   caption: {
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 0,
     fontSize: 16,
     lineHeight: 22,
     color: pastelColors.auth.deepText,
     fontWeight: '600',
   },
   textOnly: {
-    maxHeight: 480,
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '700',
     paddingTop: 12,
   },
   measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
-  showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 4, paddingBottom: 12},
+  showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
   showMoreText: {color: pastelColors.accent, fontWeight: '900'},
   link: {
     paddingHorizontal: 14,
