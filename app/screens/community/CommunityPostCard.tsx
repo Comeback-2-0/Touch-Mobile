@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
-  showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
+  showMoreButton: {alignSelf: 'flex-end', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
   showMoreText: {color: pastelColors.accent, fontWeight: '900'},
   inlineMoreButton: {
     position: 'absolute',
