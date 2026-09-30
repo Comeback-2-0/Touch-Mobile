@@ -70,6 +70,9 @@ export default function CommunityPostCard({
   const [collapsedCaption, setCollapsedCaption] = useState(caption.trim());
   const captionLineLimit = hasMedia ? 2 : 12;
   const captionOverflow = captionLineCount > captionLineLimit || caption.trim().length > (hasMedia ? 110 : 650);
+  const collapsedDisplayCaption = !captionExpanded && captionOverflow && collapsedCaption === caption.trim()
+    ? caption.trim().slice(0, hasMedia ? 140 : 650).trim()
+    : collapsedCaption;
   useEffect(() => {
     setCaptionExpanded(false);
     setCaptionLineCount(0);
@@ -204,12 +207,12 @@ export default function CommunityPostCard({
           {onDoubleTapLike ? (
             <Pressable onPress={handleMediaPress} accessibilityRole="text">
               <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
-                {captionExpanded ? caption.trim() : collapsedCaption}
+                {captionExpanded ? caption.trim() : collapsedDisplayCaption}
               </Text>
             </Pressable>
           ) : (
             <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
-              {captionExpanded ? caption.trim() : collapsedCaption}
+              {captionExpanded ? caption.trim() : collapsedDisplayCaption}
             </Text>
           )}
           {!captionExpanded && captionOverflow ? (
