@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   Animated,
   Image,
@@ -36,6 +36,7 @@ type Props = {
   onDoubleTapLike?: () => void;
   onSingleTap?: () => void;
   onMorePress?: () => void;
+  onShowMore?: () => void;
 };
 
 function isVideo(media?: Media | null) {
@@ -60,10 +61,13 @@ export default function CommunityPostCard({
   onDoubleTapLike,
   onSingleTap,
   onMorePress,
+  onShowMore,
 }: Props) {
   const uri = media?.url || media?.uri;
   const hasMedia = Boolean(uri);
   const hasText = Boolean(caption.trim());
+  const [captionLineCount, setCaptionLineCount] = useState(0);
+  const captionLineLimit = hasMedia ? 2 : 12;
   const lastTap = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -174,13 +178,26 @@ export default function CommunityPostCard({
         )
       ) : null}
       {hasText ? (
-        onDoubleTapLike ? (
-          <Pressable onPress={handleMediaPress} accessibilityRole="text">
-            <Text style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
-          </Pressable>
-        ) : (
-          <Text style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
-        )
+        <View>
+          <Text
+            pointerEvents="none"
+            onTextLayout={event => setCaptionLineCount(event.nativeEvent.lines.length)}
+            style={[styles.caption, !hasMedia && styles.textOnly, styles.measureCaption]}>
+            {caption.trim()}
+          </Text>
+          {onDoubleTapLike ? (
+            <Pressable onPress={handleMediaPress} accessibilityRole="text">
+              <Text numberOfLines={captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+            </Pressable>
+          ) : (
+            <Text numberOfLines={captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>{caption.trim()}</Text>
+          )}
+          {captionLineCount > captionLineLimit && onShowMore ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Open full post" onPress={onShowMore} style={styles.showMoreButton}>
+              <Text style={styles.showMoreText}>Show more</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
       {link ? (
         <Pressable
@@ -272,11 +289,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   textOnly: {
+    maxHeight: 480,
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '700',
     paddingTop: 12,
   },
+  measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
+  showMoreButton: {alignSelf: 'flex-start', paddingHorizontal: 14, paddingTop: 4, paddingBottom: 12},
+  showMoreText: {color: pastelColors.accent, fontWeight: '900'},
   link: {
     paddingHorizontal: 14,
     paddingBottom: 12,
