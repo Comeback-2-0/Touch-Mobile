@@ -8,6 +8,16 @@ const mockTabScreens: string[] = [];
 const mockTabIcons: Record<string, string> = {};
 const mockTabComponents: Record<string, React.ComponentType | undefined> = {};
 let mockTabScreenOptions: any;
+let mockInitialTab: string | undefined;
+let mockTabBar: (props: any) => React.ReactNode;
+
+jest.mock('../app/navigation/CommunityTabBar', () => ({
+  CommunityTabBarProvider: ({children}: any) => children,
+  CommunityTabBar: () => {
+    require('react').useState(true);
+    return null;
+  },
+}));
 
 jest.mock('@react-navigation/native-stack', () => ({
   createNativeStackNavigator: () => ({
@@ -33,8 +43,10 @@ jest.mock('@react-navigation/native-stack', () => ({
 
 jest.mock('@react-navigation/bottom-tabs', () => ({
   createBottomTabNavigator: () => ({
-    Navigator: ({children, screenOptions}: {children: React.ReactNode; screenOptions: any}) => {
+    Navigator: ({children, screenOptions, initialRouteName, tabBar}: any) => {
       mockTabScreenOptions = screenOptions;
+      mockInitialTab = initialRouteName;
+      mockTabBar = tabBar;
       return <>{children}</>;
     },
     Screen: ({name, component}: {name: string; component?: React.ComponentType}) => {
@@ -94,6 +106,19 @@ jest.mock('../app/context/PostQueueContext', () => ({
 }));
 
 describe('AppStack', () => {
+  it('renders the custom tab bar as a component inside the library render callback', () => {
+    act(() => { renderer.create(<AppStack />); });
+    const Context = React.createContext(null);
+    // BottomTabView calls tabBar from a Consumer, outside a hooks dispatcher.
+    expect(() => act(() => {
+      renderer.create(<Context.Consumer>{() => mockTabBar({})}</Context.Consumer>);
+    })).not.toThrow();
+  });
+  it('opens Communities by default without reordering the tabs', () => {
+    act(() => { renderer.create(<AppStack />); });
+    expect(mockInitialTab).toBe('ChatTab');
+    expect(mockTabScreens).toEqual(['Home', 'SearchBar', 'ChatTab', 'Reels', 'ProfileTab']);
+  });
   beforeEach(() => {
     mockNativeScreens.length = 0;
     mockTabScreens.length = 0;

@@ -21,6 +21,7 @@ import SettingsStack from './SettingsStack';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import NotificationsPlaceholderScreen from '../screens/NotificationsPlaceholderScreen';
 import type {LocalPostImage} from '../features/posts/types';
+import {CommunityTabBar, CommunityTabBarProvider} from './CommunityTabBar';
 
 export type AppStackParamList = {
   MainTabs: undefined;
@@ -107,13 +108,18 @@ function getTabScreenOptions({
 
 function BottomTabNavigator() {
   return (
-    <Tab.Navigator screenOptions={getTabScreenOptions}>
-      <Tab.Screen name="Home" component={HomeComingSoon} />
-      <Tab.Screen name="SearchBar" component={SearchComingSoon} />
-      <Tab.Screen name="ChatTab" component={CommunityStack} />
-      <Tab.Screen name="Reels" component={ReelsComingSoon} />
-      <Tab.Screen name="ProfileTab" component={ProfileStack} />
-    </Tab.Navigator>
+    <CommunityTabBarProvider>
+      <Tab.Navigator
+        initialRouteName="ChatTab"
+        screenOptions={getTabScreenOptions}
+        tabBar={props => <CommunityTabBar {...props} />}>
+        <Tab.Screen name="Home" component={HomeComingSoon} />
+        <Tab.Screen name="SearchBar" component={SearchComingSoon} />
+        <Tab.Screen name="ChatTab" component={CommunityStack} />
+        <Tab.Screen name="Reels" component={ReelsComingSoon} />
+        <Tab.Screen name="ProfileTab" component={ProfileStack} />
+      </Tab.Navigator>
+    </CommunityTabBarProvider>
   );
 }
 

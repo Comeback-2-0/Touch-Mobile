@@ -233,6 +233,36 @@ export default function CommunityHomeScreen() {
   const blockCommunity = useBlockedCommunitiesStore(state => state.block);
   const listRef = useRef<FlatList<Post>>(null);
   const stickToLatestRef = useRef(true);
+  const captionAnimationsRef = useRef(new Set<string>());
+  const scrollAdjustmentVersion = useRef(0);
+  const [captionAnimating, setCaptionAnimating] = useState(false);
+  const deferredOlderPage = useRef<{posts: Post[]; nextCursor: string | null} | null>(null);
+  const prependOlderPosts = useCallback((older: Post[]) => {
+    setPosts(current => {
+      const seen = new Set(current.map(post => post.id));
+      return [...older.filter(post => !seen.has(post.id)), ...current];
+    });
+  }, []);
+  const onCaptionAnimationChange = useCallback((postId: string, active: boolean) => {
+    if (active) {
+      captionAnimationsRef.current.add(postId);
+      scrollAdjustmentVersion.current += 1;
+      stickToLatestRef.current = false;
+    } else {
+      captionAnimationsRef.current.delete(postId);
+    }
+    setCaptionAnimating(captionAnimationsRef.current.size > 0);
+  }, []);
+  useEffect(() => {
+    // Restore native anchoring before inserting a page that arrived mid-animation.
+    if (!captionAnimating && deferredOlderPage.current) {
+      const page = deferredOlderPage.current;
+      deferredOlderPage.current = null;
+      prependOlderPosts(page.posts);
+      setNextCursor(page.nextCursor);
+      setLoadingOlder(false);
+    }
+  }, [captionAnimating, prependOlderPosts]);
   const loadingOlderRef = useRef(false);
   const unreadMarkedRef = useRef(false);
   const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: Array<{item: Post}>}) => {
@@ -252,7 +282,8 @@ export default function CommunityHomeScreen() {
   }).current;
   const onScrollToIndexFailed = useCallback(
     ({index, averageItemLength}: {index: number; averageItemLength: number}) => {
-      if (index < 0 || index >= posts.length) return;
+      if (captionAnimationsRef.current.size || index < 0 || index >= posts.length) return;
+      const version = scrollAdjustmentVersion.current;
 
       // Variable-height posts may not have been measured yet. Move near the
       // target using the measured average, then retry once after rendering.
@@ -261,6 +292,7 @@ export default function CommunityHomeScreen() {
         animated: false,
       });
       setTimeout(() => {
+        if (captionAnimationsRef.current.size || version !== scrollAdjustmentVersion.current) return;
         listRef.current?.scrollToIndex({index, animated: false, viewPosition: 0.12});
       }, 100);
     },
@@ -287,7 +319,9 @@ export default function CommunityHomeScreen() {
     if (!firstUnreadPostId || !posts.length) return;
     const index = posts.findIndex(post => post.id === firstUnreadPostId);
     if (index < 0) return;
+    const version = scrollAdjustmentVersion.current;
     requestAnimationFrame(() => {
+      if (captionAnimationsRef.current.size || version !== scrollAdjustmentVersion.current) return;
       listRef.current?.scrollToIndex({index, animated: false, viewPosition: 0.12});
     });
   }, [firstUnreadPostId, posts]);
@@ -297,8 +331,10 @@ export default function CommunityHomeScreen() {
   };
 
   const scrollToLatest = useCallback((animated = false) => {
-    if (!posts.length) return;
+    if (!posts.length || captionAnimationsRef.current.size) return;
+    const version = scrollAdjustmentVersion.current;
     requestAnimationFrame(() => {
+      if (captionAnimationsRef.current.size || version !== scrollAdjustmentVersion.current) return;
       listRef.current?.scrollToEnd({animated});
     });
   }, [posts.length]);
@@ -306,15 +342,12 @@ export default function CommunityHomeScreen() {
   const mergeChronological = useCallback((incomingNewestFirst: Post[], mode: 'replace' | 'prepend') => {
     const chronological = [...incomingNewestFirst].reverse();
     if (mode === 'replace') return chronological;
-    setPosts(current => {
-      const seen = new Set(current.map(post => post.id));
-      return [...chronological.filter(post => !seen.has(post.id)), ...current];
-    });
+    prependOlderPosts(chronological);
     return chronological;
-  }, []);
+  }, [prependOlderPosts]);
 
   const loadOlder = useCallback(async () => {
-    if (!nextCursor || loadingOlderRef.current) return;
+    if (!nextCursor || loadingOlderRef.current || captionAnimationsRef.current.size || deferredOlderPage.current) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     try {
@@ -322,13 +355,22 @@ export default function CommunityHomeScreen() {
         `/communities/${id}/content/feed`,
         {params: {limit: FEED_PAGE_SIZE, before: nextCursor}},
       );
-      mergeChronological(feed.data.posts || [], 'prepend');
-      setNextCursor(feed.data.nextCursor || null);
+      if (captionAnimationsRef.current.size) {
+        deferredOlderPage.current = {
+          posts: [...(feed.data.posts || [])].reverse(), nextCursor: feed.data.nextCursor || null,
+        };
+      } else {
+        mergeChronological(feed.data.posts || [], 'prepend');
+        setNextCursor(feed.data.nextCursor || null);
+      }
     } catch {
       // Keep current page; user can scroll up again.
+      if (captionAnimationsRef.current.size) {
+        deferredOlderPage.current = {posts: [], nextCursor};
+      }
     } finally {
       loadingOlderRef.current = false;
-      setLoadingOlder(false);
+      if (!deferredOlderPage.current) setLoadingOlder(false);
     }
   }, [id, mergeChronological, nextCursor]);
 
@@ -760,7 +802,7 @@ export default function CommunityHomeScreen() {
         refreshing={refreshing}
         onRefresh={() => load({refresh: true})}
         contentContainerStyle={posts.length ? styles.list : styles.empty}
-        maintainVisibleContentPosition={{minIndexForVisible: 1}}
+        maintainVisibleContentPosition={captionAnimating ? undefined : {minIndexForVisible: 1}}
         onScroll={({nativeEvent}) => {
           if (nativeEvent.contentOffset.y < 80) loadOlder();
         }}
@@ -769,13 +811,13 @@ export default function CommunityHomeScreen() {
         viewabilityConfig={{itemVisiblePercentThreshold: 35}}
         scrollEventThrottle={160}
         onContentSizeChange={() => {
-          if (stickToLatestRef.current && posts.length) {
+          if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
             scrollToLatest(false);
             stickToLatestRef.current = false;
           }
         }}
         onLayout={() => {
-          if (stickToLatestRef.current && posts.length) {
+          if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
             scrollToLatest(false);
           }
         }}
@@ -810,6 +852,7 @@ export default function CommunityHomeScreen() {
               }}
               onSingleTap={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
               onMorePress={() => setPostMenuId(item.id)}
+              onCaptionAnimationChange={active => onCaptionAnimationChange(item.id, active)}
             />
             <View style={styles.feedActions}>
                 <Pressable accessibilityRole="button" accessibilityLabel="Like post" onPress={() => engagePost(item.id, 'like')} style={styles.feedAction}>

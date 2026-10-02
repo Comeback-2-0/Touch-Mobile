@@ -1,8 +1,7 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   Animated,
   Image,
-  LayoutAnimation,
   Linking,
   Pressable,
   StyleSheet,
@@ -13,6 +12,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import Video from 'react-native-video';
 import {pastelColors} from '../../theme/colors';
 import {aliasColor} from './communityUx';
+import ExpandableCommunityCaption from './ExpandableCommunityCaption';
 
 type Media = {
   type?: string;
@@ -37,6 +37,7 @@ type Props = {
   onDoubleTapLike?: () => void;
   onSingleTap?: () => void;
   onMorePress?: () => void;
+  onCaptionAnimationChange?: (active: boolean) => void;
 };
 
 function isVideo(media?: Media | null) {
@@ -61,23 +62,12 @@ export default function CommunityPostCard({
   onDoubleTapLike,
   onSingleTap,
   onMorePress,
+  onCaptionAnimationChange,
 }: Props) {
   const uri = media?.url || media?.uri;
   const hasMedia = Boolean(uri);
   const hasText = Boolean(caption.trim());
-  const [captionLineCount, setCaptionLineCount] = useState(0);
-  const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [collapsedCaption, setCollapsedCaption] = useState(caption.trim());
   const captionLineLimit = hasMedia ? 2 : 12;
-  const captionOverflow = captionLineCount > captionLineLimit || caption.trim().length > (hasMedia ? 110 : 650);
-  const collapsedDisplayCaption = !captionExpanded && captionOverflow && collapsedCaption === caption.trim()
-    ? caption.trim().slice(0, hasMedia ? 140 : 650).trim()
-    : collapsedCaption;
-  useEffect(() => {
-    setCaptionExpanded(false);
-    setCaptionLineCount(0);
-    setCollapsedCaption(caption.trim());
-  }, [caption]);
   const lastTap = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -188,58 +178,15 @@ export default function CommunityPostCard({
         )
       ) : null}
       {hasText ? (
-        <View>
-          <Text
-            pointerEvents="none"
-            onTextLayout={event => {
-              const lines = event.nativeEvent.lines.length;
-              setCaptionLineCount(lines);
-              if (!captionExpanded && lines > captionLineLimit && collapsedCaption === caption.trim()) {
-                const estimatedLength = Math.max(24, Math.floor(caption.trim().length * (captionLineLimit / lines) * 0.9));
-                const words = caption.trim().slice(0, estimatedLength).trim().split(/\s+/);
-                words.pop();
-                setCollapsedCaption(words.join(' '));
-              }
-            }}
-            style={[styles.caption, !hasMedia && styles.textOnly, styles.measureCaption]}>
-            {caption.trim()}
-          </Text>
-          {onDoubleTapLike ? (
-            <Pressable onPress={handleMediaPress} accessibilityRole="text">
-              <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
-                {captionExpanded ? caption.trim() : collapsedDisplayCaption}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text numberOfLines={captionExpanded ? undefined : captionLineLimit} style={[styles.caption, !hasMedia && styles.textOnly]}>
-              {captionExpanded ? caption.trim() : collapsedDisplayCaption}
-            </Text>
-          )}
-          {!captionExpanded && captionOverflow ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Show more caption"
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setCaptionExpanded(true);
-              }}
-              style={styles.inlineMoreButton}>
-              <Text style={styles.inlineMore}>... more</Text>
-            </Pressable>
-          ) : null}
-          {captionOverflow && captionExpanded ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={captionExpanded ? 'Show less' : 'Show full caption'}
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setCaptionExpanded(current => !current);
-              }}
-              style={styles.showMoreButton}>
-              <Text style={styles.showMoreText}>{captionExpanded ? 'Show less' : 'Show more'}</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <ExpandableCommunityCaption
+          key={`${captionLineLimit}:${caption}`}
+          caption={caption.trim()}
+          collapsedLines={captionLineLimit}
+          lineHeight={hasMedia ? 22 : 26}
+          textStyle={[styles.caption, !hasMedia && styles.textOnly]}
+          onPress={onDoubleTapLike ? handleMediaPress : undefined}
+          onAnimationChange={onCaptionAnimationChange}
+        />
       ) : null}
       {link ? (
         <Pressable
@@ -324,7 +271,6 @@ const styles = StyleSheet.create({
   },
   caption: {
     paddingHorizontal: 14,
-    paddingTop: 12,
     paddingBottom: 0,
     fontSize: 16,
     lineHeight: 22,
@@ -335,19 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '700',
-    paddingTop: 12,
   },
-  measureCaption: {position: 'absolute', left: 0, right: 0, opacity: 0, zIndex: -1},
-  showMoreButton: {alignSelf: 'flex-end', paddingHorizontal: 14, paddingTop: 2, paddingBottom: 12},
-  showMoreText: {color: pastelColors.accent, fontWeight: '900'},
-  inlineMoreButton: {
-    position: 'absolute',
-    right: 14,
-    bottom: 0,
-    paddingLeft: 6,
-    backgroundColor: pastelColors.auth.glassSurface,
-  },
-  inlineMore: {color: pastelColors.accent, fontSize: 14, fontWeight: '900'},
   link: {
     paddingHorizontal: 14,
     paddingBottom: 12,

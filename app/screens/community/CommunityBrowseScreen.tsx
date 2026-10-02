@@ -28,6 +28,10 @@ import {
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
 import PreviewMarqueeText from './PreviewMarqueeText';
 import CommunityWithdrawRequestAlert from './CommunityWithdrawRequestAlert';
+import {useCommunityTabBar} from '../../navigation/CommunityTabBar';
+import {useCommunityTabBarScroll} from '../../navigation/useCommunityTabBarScroll';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {CommunityListGesture} from '../../navigation/CommunityListGesture';
 
 type Navigation = NativeStackNavigationProp<CommunityStackParamList>;
 type BrowseMode = 'trending' | 'mine';
@@ -218,6 +222,14 @@ export default function CommunityBrowseScreen() {
       }),
     [blockedIds, communities],
   );
+  const tabBar = useCommunityTabBar();
+  // Reserve a fixed amount for the bar and floating button so animation never
+  // changes the list's viewport or scroll position.
+  const bottomClearance = tabBar.height + 90;
+  const {onGestureBegin, onGesturePull, onGestureCancel, ...tabBarScroll} = useCommunityTabBarScroll({
+    enabled: !initialLoading && !refreshing && !error && visibleCommunities.length > 0,
+    bottomClearance,
+  });
 
   useEffect(() => {
     setPreviewId(null);
@@ -318,7 +330,8 @@ export default function CommunityBrowseScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <GestureHandlerRootView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.heading}>
           <Text style={styles.title} maxFontSizeMultiplier={1.3}>
@@ -410,16 +423,23 @@ export default function CommunityBrowseScreen() {
           </Pressable>
         </View>
       ) : (
+        <CommunityListGesture onBegin={onGestureBegin} onPull={onGesturePull} onCancel={onGestureCancel}>
         <FlatList
+          {...tabBarScroll}
+          scrollEventThrottle={16}
           data={visibleCommunities}
           keyExtractor={item => item.id || item._id}
           refreshing={refreshing}
           onRefresh={() => load({refresh: true})}
-          onScrollBeginDrag={() => {
+          onScrollBeginDrag={event => {
+            tabBarScroll.onScrollBeginDrag(event);
             setPreviewId(null);
             setPreviewCommunity(null);
           }}
-          contentContainerStyle={visibleCommunities.length ? styles.list : styles.empty}
+          contentContainerStyle={[
+            visibleCommunities.length ? styles.list : styles.empty,
+            {paddingBottom: 24 + bottomClearance},
+          ]}
           ListHeaderComponent={listHeader}
           renderItem={({item, index}) => {
             const id = String(item.id || item._id);
@@ -506,18 +526,27 @@ export default function CommunityBrowseScreen() {
             </View>
           }
         />
+        </CommunityListGesture>
       )}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Create community"
-        onPress={() => navigation.navigate('CommunityCreate')}
-        style={({pressed}) => [
-          styles.createFab,
-          {bottom: 16},
-          pressed && styles.createFabPressed,
-        ]}>
-        <Feather name="plus" size={26} color={pastelColors.white} />
-      </Pressable>
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.createFabPosition, {
+          bottom: tabBar.bottomInset + 16,
+          transform: [{translateY: tabBar.progress.interpolate({
+            inputRange: [0, 1], outputRange: [0, -(tabBar.height - tabBar.bottomInset)],
+          })}],
+        }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Create community"
+          onPress={() => navigation.navigate('CommunityCreate')}
+          style={({pressed}) => [
+            styles.createFab,
+            pressed && styles.createFabPressed,
+          ]}>
+          <Feather name="plus" size={26} color={pastelColors.white} />
+        </Pressable>
+      </Animated.View>
       <CommunityPreviewSheet
         community={previewCommunity}
         loading={previewLoading}
@@ -550,6 +579,7 @@ export default function CommunityBrowseScreen() {
         }}
       />
     </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -662,9 +692,11 @@ const styles = StyleSheet.create({
   subtitle: {marginTop: 2, fontWeight: '700', color: pastelColors.auth.mutedText},
   headerActions: {flexDirection: 'row', alignItems: 'center'},
   iconButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
-  createFab: {
+  createFabPosition: {
     position: 'absolute',
     right: 18,
+  },
+  createFab: {
     height: 58,
     width: 58,
     borderRadius: 29,
