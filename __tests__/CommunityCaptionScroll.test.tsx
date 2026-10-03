@@ -1,5 +1,5 @@
 import React from 'react';
-import {FlatList} from 'react-native';
+import {AccessibilityInfo, FlatList} from 'react-native';
 import renderer, {act} from 'react-test-renderer';
 import CommunityHomeScreen from '../app/screens/community/CommunityHomeScreen';
 import CommunityPostCard from '../app/screens/community/CommunityPostCard';
@@ -9,7 +9,9 @@ const mockCommunity = {id: 'community-1', name: 'Community', contentVisibility: 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({navigate: jest.fn(), goBack: jest.fn()}),
   useRoute: () => ({params: {community: mockCommunity}}),
+  useIsFocused: () => true,
 }));
+jest.mock('react-native-gesture-handler', () => require('../__mocks__/communityRefreshGestures'));
 jest.mock('../app/utils/api', () => ({api: {get: jest.fn(), post: jest.fn()}}));
 jest.mock('../app/features/profile/store/authStore', () => ({useAuthStore: (select: any) => select({})}));
 jest.mock('react-native-vector-icons/Feather', () => 'Feather');
@@ -23,6 +25,7 @@ jest.mock('../app/screens/community/CommunityConfirmSheet', () => 'CommunityConf
 let screen: renderer.ReactTestRenderer;
 beforeEach(async () => {
   jest.useFakeTimers();
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   jest.mocked(api.get).mockImplementation(async url => ({data: String(url).endsWith('/content/feed')
     ? {posts: [{id: 'post-1', text: 'Caption', alias: 'Anon'}], nextCursor: 'older'}
     : {community: mockCommunity},
@@ -44,7 +47,7 @@ it('pauses anchoring and bottom scroll during expansion, then restores older-pos
   expect(list().props.maintainVisibleContentPosition).toBeUndefined();
   act(() => {
     list().props.onContentSizeChange(300, 900);
-    list().props.onLayout();
+    list().props.onLayout({nativeEvent: {layout: {height: 500}}});
     jest.runOnlyPendingTimers();
   });
   expect(scrollToEnd).not.toHaveBeenCalled();
@@ -57,7 +60,7 @@ it('pauses anchoring and bottom scroll during expansion, then restores older-pos
 it('cancels a queued initial bottom scroll when the reader expands a caption', () => {
   const list = screen.root.findByType(FlatList);
   const scrollToEnd = jest.spyOn(list.instance, 'scrollToEnd').mockImplementation(() => {});
-  act(() => list.props.onLayout());
+  act(() => list.props.onLayout({nativeEvent: {layout: {height: 500}}}));
   act(() => screen.root.findByType(CommunityPostCard).props.onCaptionAnimationChange?.(true));
   act(() => { jest.runOnlyPendingTimers(); });
   expect(scrollToEnd).not.toHaveBeenCalled();
@@ -95,4 +98,26 @@ it('keeps the loading header stationary if an older-page request fails during ex
   expect(list().props.maintainVisibleContentPosition).toEqual({minIndexForVisible: 1});
   expect(list().props.ListHeaderComponent.props.children[1]?.props.children?.props.children).toBe('Load earlier posts');
   expect(list().props.data.map((post: any) => post.id)).toEqual(['post-1']);
+});
+
+it('refreshes from the bottom without a native top refresh control and keeps newest posts last', async () => {
+  const list = () => screen.root.findByType(FlatList);
+  expect(list().props.onRefresh).toBeUndefined();
+  jest.mocked(api.get).mockImplementation(async url => ({data: String(url).endsWith('/content/feed')
+    ? {posts: [{id: 'new-post', text: 'New'}, {id: 'post-1', text: 'Caption', alias: 'Anon'}]}
+    : {community: mockCommunity},
+  }) as any);
+  await act(async () => list().props.onAccessibilityAction({nativeEvent: {actionName: 'refresh'}}));
+  expect(list().props.data.map((post: any) => post.id)).toEqual(['post-1', 'new-post']);
+  expect(list().props.scrollEnabled).toBe(false);
+});
+
+it('keeps the visible posts when a bottom refresh fails', async () => {
+  const list = () => screen.root.findByType(FlatList);
+  const originalPosts = list().props.data;
+  jest.mocked(api.get).mockRejectedValueOnce(new Error('Offline'));
+  await act(async () => list().props.onAccessibilityAction({nativeEvent: {actionName: 'refresh'}}));
+  expect(list().props.data).toBe(originalPosts);
+  await act(async () => { jest.advanceTimersByTime(500); });
+  expect(screen.root.findAllByType('Feather' as any).some(item => item.props.name === 'alert-circle')).toBe(true);
 });

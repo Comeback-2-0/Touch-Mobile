@@ -19,7 +19,8 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {GestureDetector, GestureHandlerRootView} from 'react-native-gesture-handler';
+import {RouteProp, useIsFocused, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {api} from '../../utils/api';
 import {pastelColors} from '../../theme/colors';
@@ -30,6 +31,7 @@ import CommunityPostCard from './CommunityPostCard';
 import CommunityConfirmSheet from './CommunityConfirmSheet';
 import CommunityWithdrawRequestAlert from './CommunityWithdrawRequestAlert';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
+import {useCommunityPullUpRefresh} from './useCommunityPullUpRefresh';
 import {
   communityErrorCopy,
   communityCommentCount,
@@ -192,6 +194,7 @@ function HeroSkeleton() {
 
 export default function CommunityHomeScreen() {
   const navigation = useNavigation<Navigation>();
+  const focused = useIsFocused();
   const {params} = useRoute<Route>();
   const routeCommunity = params.community;
   const id = routeCommunity?.id || routeCommunity?._id || params.communityId || '';
@@ -207,11 +210,12 @@ export default function CommunityHomeScreen() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [firstUnreadPostId, setFirstUnreadPostId] = useState<string | null>(null);
   const firstUnreadPostRef = useRef<string | null>(null);
+  const skipUnreadScrollRef = useRef(false);
   const [membership, setMembership] = useState<any>();
   const [joinRequest, setJoinRequest] = useState<JoinRequest | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
   const [error, setError] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [communityInfoOpen, setCommunityInfoOpen] = useState(false);
@@ -316,7 +320,7 @@ export default function CommunityHomeScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!firstUnreadPostId || !posts.length) return;
+    if (skipUnreadScrollRef.current || !firstUnreadPostId || !posts.length) return;
     const index = posts.findIndex(post => post.id === firstUnreadPostId);
     if (index < 0) return;
     const version = scrollAdjustmentVersion.current;
@@ -347,7 +351,7 @@ export default function CommunityHomeScreen() {
   }, [prependOlderPosts]);
 
   const loadOlder = useCallback(async () => {
-    if (!nextCursor || loadingOlderRef.current || captionAnimationsRef.current.size || deferredOlderPage.current) return;
+    if (!nextCursor || loadingOlderRef.current || refreshingRef.current || captionAnimationsRef.current.size || deferredOlderPage.current) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     try {
@@ -376,7 +380,8 @@ export default function CommunityHomeScreen() {
 
   const load = useCallback(
     async ({refresh = false} = {}) => {
-      if (refresh) setRefreshing(true);
+      if (refresh && (refreshingRef.current || loadingOlderRef.current)) return false;
+      if (refresh) refreshingRef.current = true;
       else setLoading(true);
       setError('');
       try {
@@ -390,7 +395,7 @@ export default function CommunityHomeScreen() {
         setMuted(Boolean(info.data.muted ?? m?.muted));
         if (nextCommunity?.contentVisibility !== 'members' || m?.status === 'active') {
           const [feed, queue] = await Promise.all([
-            api.get<{posts: Post[]; nextCursor?: string | null}>(`/communities/${id}/content/feed`, {
+            api.get<{posts: Post[]; nextCursor?: string | null; unreadCount?: number; firstUnreadPostId?: string | null}>(`/communities/${id}/content/feed`, {
               params: {limit: FEED_PAGE_SIZE},
             }),
             m?.status === 'active'
@@ -400,23 +405,34 @@ export default function CommunityHomeScreen() {
           setPosts(mergeChronological(feed.data.posts || [], 'replace'));
           setNextCursor(feed.data.nextCursor || null);
           setUnreadCount(Number(feed.data.unreadCount || 0));
+          // A deliberate bottom refresh stays with the newest posts rather than
+          // jumping back to the first unread item during the reveal animation.
+          skipUnreadScrollRef.current = refresh;
+          unreadMarkedRef.current = false;
           setFirstUnreadPostId(feed.data.firstUnreadPostId || null);
           setQueueCount((queue.data.posts || []).length);
-          if (!refresh) stickToLatestRef.current = true;
+          stickToLatestRef.current = true;
         } else {
           setPosts([]);
           setNextCursor(null);
           setQueueCount(0);
         }
+        return true;
       } catch (err: any) {
-        setError(communityErrorCopy(err, 'Could not load this community.'));
+        if (!refresh) setError(communityErrorCopy(err, 'Could not load this community.'));
+        return false;
       } finally {
         setLoading(false);
-        setRefreshing(false);
+        refreshingRef.current = false;
       }
     },
     [id, mergeChronological, routeCommunity],
   );
+
+  const pullUpRefresh = useCommunityPullUpRefresh({
+    enabled: focused && !loading && !loadingOlder && !captionAnimating,
+    onRefresh: () => load({refresh: true}),
+  });
 
   useEffect(() => {
     load();
@@ -795,119 +811,135 @@ export default function CommunityHomeScreen() {
         </View>
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={posts}
-        keyExtractor={p => p.id}
-        refreshing={refreshing}
-        onRefresh={() => load({refresh: true})}
-        contentContainerStyle={posts.length ? styles.list : styles.empty}
-        maintainVisibleContentPosition={captionAnimating ? undefined : {minIndexForVisible: 1}}
-        onScroll={({nativeEvent}) => {
-          if (nativeEvent.contentOffset.y < 80) loadOlder();
-        }}
-        onViewableItemsChanged={onViewableItemsChanged}
-        onScrollToIndexFailed={onScrollToIndexFailed}
-        viewabilityConfig={{itemVisiblePercentThreshold: 35}}
-        scrollEventThrottle={160}
-        onContentSizeChange={() => {
-          if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
-            scrollToLatest(false);
-            stickToLatestRef.current = false;
-          }
-        }}
-        onLayout={() => {
-          if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
-            scrollToLatest(false);
-          }
-        }}
-        ListHeaderComponent={
-          <View style={styles.about}>
-            {unreadCount > 0 && firstUnreadPostId ? (
-              <Text style={styles.loadingOlder}>Unread posts · {unreadCount}</Text>
-            ) : null}
-            {loadingOlder ? (
-              <Text style={styles.loadingOlder}>Loading earlier posts...</Text>
-            ) : nextCursor ? (
-              <Pressable onPress={loadOlder} style={styles.loadOlderButton}>
-                <Text style={styles.loadOlderText}>Load earlier posts</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        }
-        renderItem={({item}) => (
-          <Pressable
-            style={styles.card}>
-            <CommunityPostCard
-              compact
-              alias={item.alias}
-              caption={item.text}
-              media={item.media}
-              link={item.link}
-              timeLabel={item.createdAt ? formatRelativeTime(item.createdAt) : undefined}
-              showAvatar={false}
-              showAnonymousLabel={false}
-              onDoubleTapLike={() => {
-                if (!item.likedByMe) engagePost(item.id, 'like');
+      <GestureHandlerRootView style={styles.feedViewport}>
+        <Animated.View style={[styles.feedContent, pullUpRefresh.contentStyle]}>
+          <GestureDetector gesture={pullUpRefresh.gesture}>
+            <FlatList
+              ref={listRef}
+              data={posts}
+              keyExtractor={p => p.id}
+              bounces={false}
+              overScrollMode="never"
+              scrollEnabled={!pullUpRefresh.active}
+              accessibilityActions={[{name: 'refresh', label: 'Refresh community feed'}]}
+              onAccessibilityAction={event => {
+                if (event.nativeEvent.actionName === 'refresh') pullUpRefresh.refresh();
               }}
-              onSingleTap={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
-              onMorePress={() => setPostMenuId(item.id)}
-              onCaptionAnimationChange={active => onCaptionAnimationChange(item.id, active)}
-            />
-            <View style={styles.feedActions}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Like post" onPress={() => engagePost(item.id, 'like')} style={styles.feedAction}>
-                <MaterialCommunityIcons name={item.likedByMe ? 'thumb-up' : 'thumb-up-outline'} size={19} color={item.likedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
-                {Number(item.likes || 0) > 0 ? (
-                  <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:like` && styles.hiddenCount]}>
-                    {formatCommunityCount(Number(item.likes || 0))}
-                  </Text>
-                ) : null}
+              contentContainerStyle={posts.length ? styles.list : styles.empty}
+              maintainVisibleContentPosition={captionAnimating || pullUpRefresh.active ? undefined : {minIndexForVisible: 1}}
+              onScroll={event => {
+                pullUpRefresh.onScroll(event);
+                const {nativeEvent} = event;
+                if (nativeEvent.contentOffset.y < 80) loadOlder();
+              }}
+              onViewableItemsChanged={onViewableItemsChanged}
+              onScrollToIndexFailed={onScrollToIndexFailed}
+              viewabilityConfig={{itemVisiblePercentThreshold: 35}}
+              scrollEventThrottle={16}
+              onContentSizeChange={(width, height) => {
+                pullUpRefresh.onContentSizeChange(width, height);
+                if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
+                  scrollToLatest(false);
+                  stickToLatestRef.current = false;
+                }
+              }}
+              onLayout={event => {
+                pullUpRefresh.onLayout(event);
+                if (!captionAnimationsRef.current.size && stickToLatestRef.current && posts.length) {
+                  scrollToLatest(false);
+                }
+              }}
+              ListHeaderComponent={
+                <View style={styles.about}>
+                  {unreadCount > 0 && firstUnreadPostId ? (
+                    <Text style={styles.loadingOlder}>Unread posts · {unreadCount}</Text>
+                  ) : null}
+                  {loadingOlder ? (
+                    <Text style={styles.loadingOlder}>Loading earlier posts...</Text>
+                  ) : nextCursor ? (
+                    <Pressable onPress={loadOlder} style={styles.loadOlderButton}>
+                      <Text style={styles.loadOlderText}>Load earlier posts</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              }
+              renderItem={({item}) => (
+                <Pressable
+                  style={styles.card}>
+                  <CommunityPostCard
+                    compact
+                    alias={item.alias}
+                    caption={item.text}
+                    media={item.media}
+                    link={item.link}
+                    timeLabel={item.createdAt ? formatRelativeTime(item.createdAt) : undefined}
+                    showAvatar={false}
+                    showAnonymousLabel={false}
+                    onDoubleTapLike={() => {
+                      if (!item.likedByMe) engagePost(item.id, 'like');
+                    }}
+                    onSingleTap={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
+                    onMorePress={() => setPostMenuId(item.id)}
+                    onCaptionAnimationChange={active => onCaptionAnimationChange(item.id, active)}
+                  />
+                  <View style={styles.feedActions}>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Like post" onPress={() => engagePost(item.id, 'like')} style={styles.feedAction}>
+                      <MaterialCommunityIcons name={item.likedByMe ? 'thumb-up' : 'thumb-up-outline'} size={19} color={item.likedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
+                      {Number(item.likes || 0) > 0 ? (
+                        <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:like` && styles.hiddenCount]}>
+                          {formatCommunityCount(Number(item.likes || 0))}
+                        </Text>
+                      ) : null}
+                      </Pressable>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Dislike post" onPress={() => engagePost(item.id, 'dislike')} style={styles.feedAction}>
+                      <MaterialCommunityIcons name={item.dislikedByMe ? 'thumb-down' : 'thumb-down-outline'} size={19} color={item.dislikedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
+                      {Number(item.dislikes || 0) > 0 ? (
+                        <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:dislike` && styles.hiddenCount]}>
+                          {formatCommunityCount(Number(item.dislikes || 0))}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Comments, ${communityCommentCount(item)}`}
+                      onPress={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
+                      style={styles.feedAction}>
+                      <MaterialCommunityIcons name="comment-outline" size={19} color={pastelColors.auth.deepText} />
+                      {communityCommentCount(item) > 0 ? <Text style={styles.feedActionText}>{formatCommunityCount(communityCommentCount(item))}</Text> : null}
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Write a comment"
+                      onPress={() => {
+                        if (!joined) return showCommunityToast('Join the community to interact.');
+                        navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
+                      }}
+                      style={styles.commentInput}>
+                      <Text style={styles.commentPlaceholder}>Write a comment...</Text>
+                    </Pressable>
+                  </View>
                 </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Dislike post" onPress={() => engagePost(item.id, 'dislike')} style={styles.feedAction}>
-                <MaterialCommunityIcons name={item.dislikedByMe ? 'thumb-down' : 'thumb-down-outline'} size={19} color={item.dislikedByMe ? pastelColors.accent : pastelColors.auth.deepText} />
-                {Number(item.dislikes || 0) > 0 ? (
-                  <Text style={[styles.feedActionText, revealingCountKey === `${item.id}:dislike` && styles.hiddenCount]}>
-                    {formatCommunityCount(Number(item.dislikes || 0))}
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.title}>No posts yet. Be the first voice here.</Text>
+                  <Text style={styles.copy}>
+                    Submissions start in the review queue before they become public.
                   </Text>
-                ) : null}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Comments, ${communityCommentCount(item)}`}
-                onPress={() => navigation.navigate('CommunityPost', {community, contentId: item.id})}
-                style={styles.feedAction}>
-                <MaterialCommunityIcons name="comment-outline" size={19} color={pastelColors.auth.deepText} />
-                {communityCommentCount(item) > 0 ? <Text style={styles.feedActionText}>{formatCommunityCount(communityCommentCount(item))}</Text> : null}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Write a comment"
-                onPress={() => {
-                  if (!joined) return showCommunityToast('Join the community to interact.');
-                  navigation.navigate('CommunityPost', {community, contentId: item.id, focusComment: true});
-                }}
-                style={styles.commentInput}>
-                <Text style={styles.commentPlaceholder}>Write a comment...</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.title}>No posts yet. Be the first voice here.</Text>
-            <Text style={styles.copy}>
-              Submissions start in the review queue before they become public.
-            </Text>
-            {joined ? (
-              <Pressable
-                onPress={() => navigation.navigate('CommunityCompose', {community})}
-                style={styles.button}>
-                <Text style={styles.buttonText}>Post anonymously</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        }
-      />
+                  {joined ? (
+                    <Pressable
+                      onPress={() => navigation.navigate('CommunityCompose', {community})}
+                      style={styles.button}>
+                      <Text style={styles.buttonText}>Post anonymously</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              }
+            />
+          </GestureDetector>
+        </Animated.View>
+        {pullUpRefresh.indicator}
+      </GestureHandlerRootView>
 
       <CommunityJoinRequestSheet
         visible={sheetOpen}
@@ -1055,6 +1087,8 @@ export default function CommunityHomeScreen() {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: pastelColors.auth.background},
+  feedViewport: {flex: 1, overflow: 'hidden'},
+  feedContent: {flex: 1},
   infoOverlay: {
     flex: 1,
     alignItems: 'center',
