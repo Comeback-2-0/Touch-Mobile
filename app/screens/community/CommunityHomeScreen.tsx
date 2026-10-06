@@ -1134,7 +1134,8 @@ const styles = StyleSheet.create({
   infoRule: {color: pastelColors.auth.deepText, fontSize: 15, lineHeight: 22, fontWeight: '600'},
   infoEmptyRules: {color: pastelColors.auth.mutedText, fontWeight: '600'},
   header: {
-    padding: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1228,8 +1229,8 @@ const styles = StyleSheet.create({
   ctaRow: {marginTop: 8, alignItems: 'center'},
   statusBox: {marginTop: 16, alignItems: 'center'},
   statusTitle: {fontSize: 18, fontWeight: '900', color: pastelColors.auth.deepText},
-  list: {padding: 16},
-  empty: {flexGrow: 1, padding: 16},
+  list: {paddingVertical: 16, paddingHorizontal: 0},
+  empty: {flexGrow: 1, paddingVertical: 16, paddingHorizontal: 0},
   about: {paddingBottom: 8},
   loadingOlder: {
     marginBottom: 10,
@@ -1342,7 +1343,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(50, 17, 31, 0.04)',
   },
   feedActions: {
-    paddingLeft: 8,
+    paddingLeft: 14,
     paddingRight: 14,
     paddingBottom: 8,
     flexDirection: 'row',

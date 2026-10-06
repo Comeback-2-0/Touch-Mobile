@@ -162,7 +162,14 @@ export default function CommunityPostCard({
           </View>
           {state ? <Text style={styles.state}>{state}</Text> : null}
           {onMorePress ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Post options" onPress={onMorePress} style={styles.moreButton}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Post options"
+              accessibilityHint="Opens actions for this post"
+              hitSlop={10}
+              android_ripple={{color: pastelColors.auth.primaryOverlay}}
+              onPress={onMorePress}
+              style={({pressed}) => [styles.moreButton, pressed && styles.moreButtonPressed]}>
               <Feather name="more-vertical" size={19} color={pastelColors.auth.deepText} />
             </Pressable>
           ) : null}
@@ -217,7 +224,7 @@ const styles = StyleSheet.create({
   compact: {backgroundColor: 'transparent'},
   identity: {
     paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingTop: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -233,7 +240,7 @@ const styles = StyleSheet.create({
   identityText: {flex: 1},
   alias: {fontWeight: '900', color: pastelColors.accent},
   meta: {
-    marginTop: 1,
+    marginTop: 0,
     fontSize: 10,
     fontWeight: '700',
     color: pastelColors.auth.mutedText,
@@ -248,14 +255,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  moreButton: {height: 40, width: 34, alignItems: 'center', justifyContent: 'center'},
+  moreButton: {
+    height: 34,
+    width: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreButtonPressed: {backgroundColor: pastelColors.auth.primaryOverlay},
   mediaFrame: {
     width: '100%',
     alignSelf: 'stretch',
     aspectRatio: 1,
     maxHeight: 480,
     backgroundColor: pastelColors.card,
-    marginTop: 8,
+    marginTop: 2,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -273,13 +287,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 0,
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 18,
     color: pastelColors.auth.deepText,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   textOnly: {
     fontSize: 18,
-    lineHeight: 26,
+    lineHeight: 20,
     fontWeight: '700',
   },
   link: {
