@@ -182,13 +182,13 @@ function ScreenHeader({title, onBack}: {title: string; onBack: () => void}) {
 
 function FeedPostSkeleton() {
   return (
-    <View style={styles.feedSkeletonCard}>
+    <View style={styles.feedSkeletonCard} accessible accessibilityLabel="Loading community post">
       <View style={styles.feedSkeletonIdentity}>
         <View style={styles.feedSkeletonTextGroup}>
           <View style={[styles.skeletonLine, styles.feedSkeletonAlias]} />
           <View style={[styles.skeletonLine, styles.feedSkeletonMeta]} />
         </View>
-        <View style={styles.feedSkeletonMore} />
+        <Feather name="more-vertical" size={19} color={pastelColors.auth.mutedText} />
       </View>
       <View style={styles.feedSkeletonImage} />
       <View style={styles.feedSkeletonCaption}>
@@ -196,10 +196,12 @@ function FeedPostSkeleton() {
         <View style={[styles.skeletonLine, styles.feedSkeletonCaptionLineShort]} />
       </View>
       <View style={styles.feedSkeletonActions}>
-        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
-        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
-        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
-        <View style={[styles.skeletonLine, styles.feedSkeletonComment]} />
+        <Feather name="thumbs-up" size={19} color={pastelColors.auth.mutedText} />
+        <Feather name="thumbs-down" size={19} color={pastelColors.auth.mutedText} />
+        <Feather name="message-square" size={19} color={pastelColors.auth.mutedText} />
+        <View style={styles.feedSkeletonComment}>
+          <View style={[styles.skeletonLine, styles.feedSkeletonCommentText]} />
+        </View>
       </View>
     </View>
   );
@@ -692,10 +694,85 @@ export default function CommunityHomeScreen() {
     </View>
   );
 
+  const feedHeader = (
+    <View style={styles.header}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        onPress={() => navigation.goBack()}
+        android_ripple={{color: pastelColors.auth.primaryOverlay}}
+        style={({pressed}) => [styles.backButton, pressed && styles.headerButtonPressed]}>
+        <Feather name="arrow-left" size={22} color={pastelColors.auth.deepText} />
+      </Pressable>
+      <Pressable
+        onPress={loading ? undefined : showCommunityInfo}
+        onLongPress={loading ? undefined : showCommunityInfo}
+        disabled={loading}
+        android_ripple={{color: pastelColors.auth.primaryOverlay}}
+        style={({pressed}) => [styles.headButton, pressed && styles.headerButtonPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Open community information">
+        {community?.image ? (
+          <Image source={{uri: community.image}} style={styles.headerAvatar} />
+        ) : (
+          <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
+            <Text style={styles.headerAvatarText}>{String(community?.name || 'C').slice(0, 1).toUpperCase()}</Text>
+          </View>
+        )}
+        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.head, {flex: 1}]}>
+          {community?.name || 'Community'}
+        </Text>
+      </Pressable>
+      <View style={styles.actions}>
+        {!loading && !joined && community?.contentVisibility === 'public' && community?.joinMode !== 'invite-only' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={communityJoinHeaderLabel(community, joinRequest?.status)}
+            onPress={pending ? confirmCancelRequest : openJoinFlow}
+            disabled={sending}
+            android_ripple={{color: 'rgba(255, 255, 255, 0.22)'}}
+            style={({pressed}) => [styles.joinHeaderButton, pressed && styles.joinHeaderButtonPressed]}>
+            <Text style={styles.joinHeaderText}>{communityJoinHeaderLabel(community, joinRequest?.status)}</Text>
+          </Pressable>
+        ) : null}
+        {joined ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Review queue"
+            onPress={() => navigation.navigate('CommunityQueue', {community})}
+            android_ripple={{color: pastelColors.auth.primaryOverlay}}
+            style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
+            <Feather name="list" size={21} color={pastelColors.auth.deepText} />
+          </Pressable>
+        ) : null}
+        {joined ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Submit post"
+            onPress={() => navigation.navigate('CommunityCompose', {community})}
+            android_ripple={{color: pastelColors.auth.primaryOverlay}}
+            style={({pressed}) => [styles.headerAction, pressed && styles.headerButtonPressed]}>
+            <Feather name="plus-square" size={21} color={pastelColors.auth.deepText} />
+          </Pressable>
+        ) : null}
+        {joined ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Community options"
+            onPress={() => setOptionsOpen(true)}
+            android_ripple={{color: pastelColors.auth.primaryOverlay}}
+            style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
+            <Feather name="more-vertical" size={22} color={pastelColors.auth.deepText} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title={community?.name || 'Community'} onBack={() => navigation.goBack()} />
+        {feedHeader}
         <View style={styles.list}>
           <FeedPostSkeleton />
           <FeedPostSkeleton />
@@ -752,77 +829,7 @@ export default function CommunityHomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          onPress={() => navigation.goBack()}
-          android_ripple={{color: pastelColors.auth.primaryOverlay}}
-          style={({pressed}) => [styles.backButton, pressed && styles.headerButtonPressed]}>
-          <Feather name="arrow-left" size={22} color={pastelColors.auth.deepText} />
-        </Pressable>
-        <Pressable
-          onPress={showCommunityInfo}
-          onLongPress={showCommunityInfo}
-          android_ripple={{color: pastelColors.auth.primaryOverlay}}
-          style={({pressed}) => [styles.headButton, pressed && styles.headerButtonPressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Open community information">
-          {community?.image ? (
-            <Image source={{uri: community.image}} style={styles.headerAvatar} />
-          ) : (
-            <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
-              <Text style={styles.headerAvatarText}>{String(community.name || 'C').slice(0, 1).toUpperCase()}</Text>
-            </View>
-          )}
-          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.head, {flex: 1}]}>
-            {community.name}
-          </Text>
-        </Pressable>
-        <View style={styles.actions}>
-          {!joined && community?.contentVisibility === 'public' && community?.joinMode !== 'invite-only' ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={communityJoinHeaderLabel(community, joinRequest?.status)}
-              onPress={pending ? confirmCancelRequest : openJoinFlow}
-              disabled={sending}
-              android_ripple={{color: 'rgba(255, 255, 255, 0.22)'}}
-              style={({pressed}) => [styles.joinHeaderButton, pressed && styles.joinHeaderButtonPressed]}>
-              <Text style={styles.joinHeaderText}>{communityJoinHeaderLabel(community, joinRequest?.status)}</Text>
-            </Pressable>
-          ) : null}
-          {joined ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Review queue"
-              onPress={() => navigation.navigate('CommunityQueue', {community})}
-              android_ripple={{color: pastelColors.auth.primaryOverlay}}
-              style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
-              <Feather name="list" size={21} color={pastelColors.auth.deepText} />
-            </Pressable>
-          ) : null}
-          {joined ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Submit post"
-              onPress={() => navigation.navigate('CommunityCompose', {community})}
-              android_ripple={{color: pastelColors.auth.primaryOverlay}}
-              style={({pressed}) => [styles.headerAction, pressed && styles.headerButtonPressed]}>
-              <Feather name="plus-square" size={21} color={pastelColors.auth.deepText} />
-            </Pressable>
-          ) : null}
-          {joined ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Community options"
-              onPress={() => setOptionsOpen(true)}
-              android_ripple={{color: pastelColors.auth.primaryOverlay}}
-              style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
-              <Feather name="more-vertical" size={22} color={pastelColors.auth.deepText} />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      {feedHeader}
 
       <FlatList
         ref={listRef}
@@ -1421,18 +1428,18 @@ const styles = StyleSheet.create({
   skeletonLine: {
     height: 12,
     borderRadius: 8,
-    backgroundColor: pastelColors.auth.glassSurface,
+    backgroundColor: '#EEDDE4',
   },
   feedSkeletonCard: {
     marginBottom: 6,
-    borderRadius: 18,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(50, 17, 31, 0.04)',
     backgroundColor: pastelColors.white,
     overflow: 'hidden',
   },
   feedSkeletonIdentity: {
-    minHeight: 40,
+    minHeight: 50,
     paddingHorizontal: 14,
     paddingTop: 6,
     flexDirection: 'row',
@@ -1440,28 +1447,22 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   feedSkeletonTextGroup: {flex: 1},
-  feedSkeletonAlias: {width: '42%', height: 14},
-  feedSkeletonMeta: {width: '22%', height: 10, marginTop: 4},
-  feedSkeletonMore: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: pastelColors.auth.glassSurface,
-  },
+  feedSkeletonAlias: {width: '38%', height: 15},
+  feedSkeletonMeta: {width: '18%', height: 10, marginTop: 5},
   feedSkeletonImage: {
     width: '100%',
     aspectRatio: 1,
     maxHeight: 480,
     marginTop: 2,
-    backgroundColor: pastelColors.auth.glassSurface,
+    backgroundColor: '#F6E8EE',
   },
   feedSkeletonCaption: {
     paddingHorizontal: 14,
     paddingTop: 12,
     gap: 8,
   },
-  feedSkeletonCaptionLine: {width: '92%', height: 16},
-  feedSkeletonCaptionLineShort: {width: '68%', height: 16},
+  feedSkeletonCaptionLine: {width: '88%', height: 16},
+  feedSkeletonCaptionLineShort: {width: '64%', height: 16},
   feedSkeletonActions: {
     minHeight: 38,
     marginTop: 10,
@@ -1469,14 +1470,19 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 14,
   },
-  feedSkeletonAction: {width: 42, height: 22},
   feedSkeletonComment: {
     flex: 1,
     minHeight: 28,
+    marginLeft: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBBBC1',
+    justifyContent: 'center',
   },
+  feedSkeletonCommentText: {width: '42%', height: 10},
   optionsOverlay: {flex: 1, justifyContent: 'flex-end'},
   reportOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(50, 17, 31, 0.32)'},
   reportBackdrop: {...StyleSheet.absoluteFillObject},
