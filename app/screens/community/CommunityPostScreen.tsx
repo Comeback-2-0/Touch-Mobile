@@ -26,7 +26,10 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {CommunityStackParamList, CommunitySummary} from '../../navigation/CommunityStack';
 import {api} from '../../utils/api';
 import {pastelColors} from '../../theme/colors';
-import {buildPublicPostShareMessage} from '../../navigation/communityLinking';
+import {
+  buildCommunityPostShareMessage,
+  buildWhatsAppShareUrl,
+} from '../../navigation/communityLinking';
 import CommunityPostCard from './CommunityPostCard';
 import CommunityConfirmSheet from './CommunityConfirmSheet';
 import {useBlockedCommunitiesStore} from './blockedCommunitiesStore';
@@ -602,17 +605,26 @@ export default function CommunityPostScreen() {
     }
   };
 
-  const sharePost = async () => {
+  const sharePost = async (whatsapp = false) => {
     setMenuOpen(false);
-    if (isPrivate) {
-      setPrivateShareOpen(true);
+    const message = buildCommunityPostShareMessage({
+      communityName: community.name || 'Community',
+      alias: post?.alias,
+      text: post?.text,
+      communityId,
+      contentId,
+      visibility: isPrivate ? 'members' : 'public',
+    });
+    if (whatsapp) {
+      const supported = await Linking.canOpenURL('whatsapp://send');
+      if (!supported) {
+        showCommunityToast('WhatsApp is not installed.');
+        return;
+      }
+      await Linking.openURL(buildWhatsAppShareUrl(message));
       return;
     }
-    await Share.share({
-      message: buildPublicPostShareMessage(community.name || 'Community', communityId, contentId),
-      title: `${community.name || 'Community'} anonymous post`,
-      url: `touch://community/${encodeURIComponent(communityId)}/post/${encodeURIComponent(contentId)}`,
-    });
+    await Share.share({message, title: `${community.name || 'Community'} post`});
   };
 
   const blockThisCommunity = async () => {
@@ -1139,10 +1151,13 @@ export default function CommunityPostScreen() {
         <Pressable style={styles.postMenuOverlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.postMenu}>
             <Text style={styles.postMenuTitle}>Post options</Text>
-            <Pressable onPress={sharePost} style={styles.postMenuRow} accessibilityLabel="Share post">
+            <Pressable onPress={() => sharePost()} style={styles.postMenuRow} accessibilityLabel="Share post">
               <Text style={styles.postMenuRowText}>
-                {isPrivate ? 'Sharing unavailable for private posts' : 'Share'}
+                Share
               </Text>
+            </Pressable>
+            <Pressable onPress={() => sharePost(true)} style={styles.postMenuRow} accessibilityLabel="Share post on WhatsApp">
+              <Text style={styles.postMenuRowText}>Share on WhatsApp</Text>
             </Pressable>
             <Pressable
               onPress={() => {

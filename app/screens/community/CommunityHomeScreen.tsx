@@ -4,12 +4,14 @@ import {
   Animated,
   FlatList,
   Image,
+  Linking,
   KeyboardAvoidingView,
   LayoutAnimation,
   Modal,
   Pressable,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +27,7 @@ import {api} from '../../utils/api';
 import {pastelColors} from '../../theme/colors';
 import {useAuthStore} from '../../features/profile/store/authStore';
 import type {CommunityStackParamList} from '../../navigation/CommunityStack';
+import {buildCommunityPostShareMessage, buildWhatsAppShareUrl} from '../../navigation/communityLinking';
 import CommunityJoinRequestSheet from './CommunityJoinRequestSheet';
 import CommunityPostCard from './CommunityPostCard';
 import CommunityConfirmSheet from './CommunityConfirmSheet';
@@ -235,6 +238,7 @@ export default function CommunityHomeScreen() {
   const [withdrawRequestOpen, setWithdrawRequestOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
+  const [shareMenuPostId, setShareMenuPostId] = useState<string | null>(null);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('harassment');
@@ -270,6 +274,29 @@ export default function CommunityHomeScreen() {
     }
     setCaptionAnimating(captionAnimationsRef.current.size > 0);
   }, []);
+
+  const shareFeedPost = useCallback(async (post: Post, whatsapp = false) => {
+    setPostMenuId(null);
+    setShareMenuPostId(null);
+    const message = buildCommunityPostShareMessage({
+      communityName: community?.name || 'Community',
+      alias: post.alias,
+      text: post.text,
+      communityId: id,
+      contentId: post.id,
+      visibility: community?.contentVisibility === 'members' ? 'members' : 'public',
+    });
+    if (whatsapp) {
+      const supported = await Linking.canOpenURL('whatsapp://send');
+      if (!supported) {
+        showCommunityToast('WhatsApp is not installed.');
+        return;
+      }
+      await Linking.openURL(buildWhatsAppShareUrl(message));
+      return;
+    }
+    await Share.share({message, title: `${community?.name || 'Community'} post`});
+  }, [community, id]);
   useEffect(() => {
     // Restore native anchoring before inserting a page that arrived mid-animation.
     if (!captionAnimating && deferredOlderPage.current) {
@@ -958,6 +985,13 @@ export default function CommunityHomeScreen() {
           <View style={styles.postMenu}>
             <Text style={styles.optionsTitle}>Post options</Text>
             <Pressable style={styles.optionsRow} onPress={() => {
+              setShareMenuPostId(postMenuId);
+              setPostMenuId(null);
+            }}>
+              <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
+              <Text style={styles.optionsRowText}>Share</Text>
+            </Pressable>
+            <Pressable style={styles.optionsRow} onPress={() => {
               setReportPostId(postMenuId);
               setPostMenuId(null);
               setReportOpen(true);
@@ -966,6 +1000,35 @@ export default function CommunityHomeScreen() {
               <Text style={styles.optionsRowText}>Report post</Text>
             </Pressable>
             <Pressable style={styles.optionsCancel} onPress={() => setPostMenuId(null)}>
+              <Text style={styles.optionsCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={Boolean(shareMenuPostId)} transparent animationType="fade" onRequestClose={() => setShareMenuPostId(null)}>
+        <Pressable style={styles.postMenuOverlay} onPress={() => setShareMenuPostId(null)}>
+          <View style={styles.postMenu}>
+            <Text style={styles.optionsTitle}>Share post</Text>
+            <Pressable
+              style={styles.optionsRow}
+              onPress={() => {
+                const post = posts.find(item => item.id === shareMenuPostId);
+                if (post) shareFeedPost(post);
+              }}>
+              <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
+              <Text style={styles.optionsRowText}>Share...</Text>
+            </Pressable>
+            <Pressable
+              style={styles.optionsRow}
+              onPress={() => {
+                const post = posts.find(item => item.id === shareMenuPostId);
+                if (post) shareFeedPost(post, true);
+              }}>
+              <Feather name="message-circle" size={18} color={pastelColors.auth.deepText} />
+              <Text style={styles.optionsRowText}>Share on WhatsApp</Text>
+            </Pressable>
+            <Pressable style={styles.optionsCancel} onPress={() => setShareMenuPostId(null)}>
               <Text style={styles.optionsCancelText}>Cancel</Text>
             </Pressable>
           </View>

@@ -13,6 +13,46 @@ import {
   communityCommentCount,
   formatCommunityCount,
 } from '../app/screens/community/communityUx';
+import {
+  buildCommunityPostShareLink,
+  buildCommunityPostShareMessage,
+  buildWhatsAppShareUrl,
+} from '../app/navigation/communityLinking';
+
+describe('community post sharing', () => {
+  it('builds a public exact-post message with a two-line excerpt and alias', () => {
+    expect(
+      buildCommunityPostShareMessage({
+        communityName: 'Kind Lantern',
+        alias: 'Kind Lantern',
+        text: 'First line of the post\nSecond line continues\nThird line stays private to the preview.',
+        communityId: 'community 1',
+        contentId: 'post/2',
+        visibility: 'public',
+      }),
+    ).toBe(
+      'First line of the post\nSecond line continues\n\nRead the complete post by Kind Lantern on Touch\nhttps://touch.app/c/community%201/p/post%2F2',
+    );
+  });
+
+  it('does not disclose private post text or media in the shared message', () => {
+    expect(
+      buildCommunityPostShareMessage({
+        communityName: 'Secret Circle',
+        alias: 'Kind Lantern',
+        text: 'Do not leak this text',
+        communityId: 'c1',
+        contentId: 'p1',
+        visibility: 'members',
+      }),
+    ).toBe('See this latest post by Kind Lantern on Touch\ntouch://community/c1/post/p1');
+  });
+
+  it('targets WhatsApp with the encoded exact-post message', () => {
+    const message = 'Read the complete post by Kind Lantern on Touch\nhttps://touch.app/c/c1/p/p1';
+    expect(buildWhatsAppShareUrl(message)).toBe(`whatsapp://send?text=${encodeURIComponent(message)}`);
+  });
+});
 
 describe('community comment helpers', () => {
   it('uses the backend total comment count without requiring comments to be loaded', () => {

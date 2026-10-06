@@ -9,14 +9,55 @@ export function buildCommunityPostDeepLink(communityId: string, contentId: strin
   return `touch://community/${c}/post/${p}`;
 }
 
+export function buildCommunityPostShareLink(communityId: string, contentId: string) {
+  const c = encodeURIComponent(String(communityId));
+  const p = encodeURIComponent(String(contentId));
+  return `https://touch.app/c/${c}/p/${p}`;
+}
+
 export function buildCommunityHomeDeepLink(communityId: string) {
   const c = encodeURIComponent(String(communityId));
   return `touch://community/${c}`;
 }
 
 export function buildPublicPostShareMessage(communityName: string, communityId: string, contentId: string) {
-  const link = buildCommunityPostDeepLink(communityId, contentId);
-  return `${communityName} | anonymous post on Touch\n${link}`;
+  return buildCommunityPostShareMessage({
+    communityName,
+    alias: 'anonymous',
+    text: '',
+    communityId,
+    contentId,
+    visibility: 'public',
+  });
+}
+
+type CommunityPostShareInput = {
+  communityName: string;
+  alias?: string;
+  text?: string;
+  communityId: string;
+  contentId: string;
+  visibility: 'public' | 'members';
+};
+
+export function buildCommunityPostShareMessage(input: CommunityPostShareInput) {
+  const alias = input.alias?.trim() || 'anonymous';
+  const link = input.visibility === 'public'
+    ? buildCommunityPostShareLink(input.communityId, input.contentId)
+    : buildCommunityPostDeepLink(input.communityId, input.contentId);
+  if (input.visibility === 'members') {
+    return `See this latest post by ${alias} on Touch\n${link}`;
+  }
+  const excerpt = (input.text || '')
+    .trim()
+    .split(/\r?\n/)
+    .slice(0, 2)
+    .join('\n');
+  return `${excerpt ? `${excerpt}\n\n` : ''}Read the complete post by ${alias} on Touch\n${link}`;
+}
+
+export function buildWhatsAppShareUrl(message: string) {
+  return `whatsapp://send?text=${encodeURIComponent(message)}`;
 }
 
 export const communityLinking: LinkingOptions<RootStackParamList> = {
