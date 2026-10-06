@@ -45,10 +45,8 @@
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="http" android:host="touch.app" />
-            <data android:scheme="https" android:host="touch.app" />
-            <data android:scheme="http" android:host="www.touch.app" />
-            <data android:scheme="https" android:host="www.touch.app" />
+            <data android:scheme="http" android:host="touch.dophera.tech" />
+            <data android:scheme="https" android:host="touch.dophera.tech" />
         </intent-filter>
       </activity>
 

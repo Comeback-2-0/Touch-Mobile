@@ -1,7 +1,8 @@
 import type {LinkingOptions} from '@react-navigation/native';
 import type {RootStackParamList} from '../navigation/RootNavigator';
 
-export const COMMUNITY_LINK_PREFIXES = ['touch://', 'https://touch.app', 'https://www.touch.app'];
+export const TOUCH_SITE_URL = 'https://touch.dophera.tech';
+export const COMMUNITY_LINK_PREFIXES = ['touch://', TOUCH_SITE_URL];
 
 export function buildCommunityPostDeepLink(communityId: string, contentId: string) {
   const c = encodeURIComponent(String(communityId));
@@ -12,7 +13,7 @@ export function buildCommunityPostDeepLink(communityId: string, contentId: strin
 export function buildCommunityPostShareLink(communityId: string, contentId: string) {
   const c = encodeURIComponent(String(communityId));
   const p = encodeURIComponent(String(contentId));
-  return `https://touch.app/c/${c}/p/${p}`;
+  return `${TOUCH_SITE_URL}/c/${c}/p/${p}`;
 }
 
 export function buildCommunityHomeDeepLink(communityId: string) {
