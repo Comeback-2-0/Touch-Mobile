@@ -3,6 +3,7 @@ import type {RootStackParamList} from '../navigation/RootNavigator';
 
 export const TOUCH_SITE_URL = 'https://app.touch.dophera.tech';
 export const COMMUNITY_LINK_PREFIXES = ['touch://', TOUCH_SITE_URL];
+export const COMMUNITY_SHARE_EXCERPT_LIMIT = 120;
 
 export function buildCommunityPostDeepLink(communityId: string, contentId: string) {
   const c = encodeURIComponent(String(communityId));
@@ -45,15 +46,14 @@ export function buildCommunityPostShareMessage(input: CommunityPostShareInput) {
   const alias = input.alias?.trim() || 'anonymous';
   const link = input.visibility === 'public'
     ? buildCommunityPostShareLink(input.communityId, input.contentId)
-    : buildCommunityPostDeepLink(input.communityId, input.contentId);
+    : buildCommunityPostShareLink(input.communityId, input.contentId);
   if (input.visibility === 'members') {
     return `See this latest post by ${alias} on Touch\n${link}`;
   }
-  const excerpt = (input.text || '')
-    .trim()
-    .split(/\r?\n/)
-    .slice(0, 2)
-    .join('\n');
+  const normalizedText = (input.text || '').trim().replace(/\s+/g, ' ');
+  const excerpt = normalizedText.length > COMMUNITY_SHARE_EXCERPT_LIMIT
+    ? `${normalizedText.slice(0, COMMUNITY_SHARE_EXCERPT_LIMIT - 1).trimEnd()}…`
+    : normalizedText;
   return `${excerpt ? `${excerpt}\n\n` : ''}Read the complete post by ${alias} on Touch\n${link}`;
 }
 

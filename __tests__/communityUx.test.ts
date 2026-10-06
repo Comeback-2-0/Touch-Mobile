@@ -15,6 +15,7 @@ import {
 } from '../app/screens/community/communityUx';
 import {
   TOUCH_SITE_URL,
+  COMMUNITY_SHARE_EXCERPT_LIMIT,
   buildCommunityPostShareLink,
   buildCommunityPostShareMessage,
   buildWhatsAppShareUrl,
@@ -24,7 +25,7 @@ describe('community post sharing', () => {
   it('uses the current Touch site domain for public share links', () => {
     expect(TOUCH_SITE_URL).toBe('https://app.touch.dophera.tech');
   });
-  it('builds a public exact-post message with a two-line excerpt and alias', () => {
+  it('builds a public exact-post message with a character-limited excerpt and alias', () => {
     expect(
       buildCommunityPostShareMessage({
         communityName: 'Kind Lantern',
@@ -35,7 +36,7 @@ describe('community post sharing', () => {
         visibility: 'public',
       }),
     ).toBe(
-      'First line of the post\nSecond line continues\n\nRead the complete post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/community%201/p/post%2F2',
+      'First line of the post Second line continues Third line stays private to the preview.\n\nRead the complete post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/community%201/p/post%2F2',
     );
   });
 
@@ -49,7 +50,21 @@ describe('community post sharing', () => {
         contentId: 'p1',
         visibility: 'members',
       }),
-    ).toBe('See this latest post by Kind Lantern on Touch\ntouch://community/c1/post/p1');
+    ).toBe('See this latest post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/c1/p/p1');
+  });
+
+  it('limits public share excerpts by characters', () => {
+    const message = buildCommunityPostShareMessage({
+      communityName: 'Movies',
+      alias: 'Curious Kite',
+      text: 'A'.repeat(COMMUNITY_SHARE_EXCERPT_LIMIT + 40),
+      communityId: 'c1',
+      contentId: 'p1',
+      visibility: 'public',
+    });
+    const excerpt = message.split('\n\n')[0];
+    expect(excerpt).toHaveLength(COMMUNITY_SHARE_EXCERPT_LIMIT);
+    expect(excerpt.endsWith('…')).toBe(true);
   });
 
   it('targets WhatsApp with the encoded exact-post message', () => {
