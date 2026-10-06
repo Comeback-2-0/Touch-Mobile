@@ -22,7 +22,7 @@ import {
 
 describe('community post sharing', () => {
   it('uses the current Touch site domain for public share links', () => {
-    expect(TOUCH_SITE_URL).toBe('https://touch.dophera.tech');
+    expect(TOUCH_SITE_URL).toBe('https://app.touch.dophera.tech');
   });
   it('builds a public exact-post message with a two-line excerpt and alias', () => {
     expect(
@@ -35,7 +35,7 @@ describe('community post sharing', () => {
         visibility: 'public',
       }),
     ).toBe(
-      'First line of the post\nSecond line continues\n\nRead the complete post by Kind Lantern on Touch\nhttps://touch.dophera.tech/c/community%201/p/post%2F2',
+      'First line of the post\nSecond line continues\n\nRead the complete post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/community%201/p/post%2F2',
     );
   });
 
@@ -53,7 +53,7 @@ describe('community post sharing', () => {
   });
 
   it('targets WhatsApp with the encoded exact-post message', () => {
-    const message = 'Read the complete post by Kind Lantern on Touch\nhttps://touch.dophera.tech/c/c1/p/p1';
+    const message = 'Read the complete post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/c1/p/p1';
     expect(buildWhatsAppShareUrl(message)).toBe(`whatsapp://send?text=${encodeURIComponent(message)}`);
   });
 });
