@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -318,6 +319,7 @@ export default function CommunityPostScreen() {
   const [replyTyping, setReplyTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sharingPost, setSharingPost] = useState(false);
   const [privateShareOpen, setPrivateShareOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -606,7 +608,9 @@ export default function CommunityPostScreen() {
   };
 
   const sharePost = async (whatsapp = false) => {
+    if (sharingPost) return;
     setMenuOpen(false);
+    setSharingPost(true);
     const message = buildCommunityPostShareMessage({
       communityName: community.name || 'Community',
       alias: post?.alias,
@@ -615,16 +619,22 @@ export default function CommunityPostScreen() {
       contentId,
       visibility: isPrivate ? 'members' : 'public',
     });
-    if (whatsapp) {
-      const supported = await Linking.canOpenURL('whatsapp://send');
-      if (!supported) {
-        showCommunityToast('WhatsApp is not installed.');
+    try {
+      if (whatsapp) {
+        const supported = await Linking.canOpenURL('whatsapp://send');
+        if (!supported) {
+          showCommunityToast('WhatsApp is not installed.');
+          return;
+        }
+        await Linking.openURL(buildWhatsAppShareUrl(message));
         return;
       }
-      await Linking.openURL(buildWhatsAppShareUrl(message));
-      return;
+      await Share.share({message, title: `${community.name || 'Community'} post`});
+    } catch {
+      showCommunityToast('Could not share this post. Please try again.');
+    } finally {
+      setSharingPost(false);
     }
-    await Share.share({message, title: `${community.name || 'Community'} post`});
   };
 
   const blockThisCommunity = async () => {
@@ -1151,12 +1161,12 @@ export default function CommunityPostScreen() {
         <Pressable style={styles.postMenuOverlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.postMenu}>
             <Text style={styles.postMenuTitle}>Post options</Text>
-            <Pressable onPress={() => sharePost()} style={styles.postMenuRow} accessibilityLabel="Share post">
-              <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
+            <Pressable onPress={() => sharePost()} disabled={sharingPost} style={({pressed}) => [styles.postMenuRow, pressed && styles.postMenuRowPressed]} accessibilityLabel="Share post">
+              {sharingPost ? <ActivityIndicator size="small" color={pastelColors.auth.deepText} /> : <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />}
               <Text style={styles.postMenuRowText}>Share</Text>
             </Pressable>
-            <Pressable onPress={() => sharePost(true)} style={styles.postMenuRow} accessibilityLabel="Share post on WhatsApp">
-              <Feather name="message-circle" size={18} color="#25D366" />
+            <Pressable onPress={() => sharePost(true)} disabled={sharingPost} style={({pressed}) => [styles.postMenuRow, pressed && styles.postMenuRowPressed]} accessibilityLabel="Share post on WhatsApp">
+              <FontAwesome name="whatsapp" size={20} color="#25D366" />
               <Text style={styles.postMenuRowText}>Share on WhatsApp</Text>
             </Pressable>
             <Pressable
@@ -1165,11 +1175,12 @@ export default function CommunityPostScreen() {
                 setReportTarget(null);
                 setReportOpen(true);
               }}
-              style={styles.postMenuRow}>
+              disabled={sharingPost}
+              style={({pressed}) => [styles.postMenuRow, pressed && styles.postMenuRowPressed]}>
               <Feather name="flag" size={18} color="#C45C5C" />
               <Text style={[styles.postMenuRowText, styles.postMenuDestructive]}>Report post</Text>
             </Pressable>
-            <Pressable onPress={() => setMenuOpen(false)} style={styles.postMenuCancel}>
+            <Pressable onPress={() => setMenuOpen(false)} style={({pressed}) => [styles.postMenuCancel, pressed && styles.postMenuCancelPressed]}>
               <Text style={styles.postMenuCancelText}>Cancel</Text>
             </Pressable>
           </View>
@@ -1264,9 +1275,11 @@ const styles = StyleSheet.create({
     backgroundColor: pastelColors.white,
   },
   postMenuRowText: {fontWeight: '800', color: pastelColors.auth.deepText},
+  postMenuRowPressed: {backgroundColor: '#F1DCE5', transform: [{scale: 0.98}]},
   postMenuDestructive: {color: '#C45C5C'},
   postMenuCancel: {marginTop: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center'},
   postMenuCancelText: {fontWeight: '800', color: pastelColors.auth.mutedText},
+  postMenuCancelPressed: {opacity: 0.55},
   reportSheet: {
     maxHeight: '92%',
     padding: 18,
