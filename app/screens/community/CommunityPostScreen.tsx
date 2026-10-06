@@ -1147,16 +1147,16 @@ export default function CommunityPostScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+      <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={styles.postMenuOverlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.postMenu}>
             <Text style={styles.postMenuTitle}>Post options</Text>
             <Pressable onPress={() => sharePost()} style={styles.postMenuRow} accessibilityLabel="Share post">
-              <Text style={styles.postMenuRowText}>
-                Share
-              </Text>
+              <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
+              <Text style={styles.postMenuRowText}>Share</Text>
             </Pressable>
             <Pressable onPress={() => sharePost(true)} style={styles.postMenuRow} accessibilityLabel="Share post on WhatsApp">
+              <Feather name="message-circle" size={18} color="#25D366" />
               <Text style={styles.postMenuRowText}>Share on WhatsApp</Text>
             </Pressable>
             <Pressable
@@ -1166,7 +1166,8 @@ export default function CommunityPostScreen() {
                 setReportOpen(true);
               }}
               style={styles.postMenuRow}>
-              <Text style={styles.postMenuRowText}>Report post</Text>
+              <Feather name="flag" size={18} color="#C45C5C" />
+              <Text style={[styles.postMenuRowText, styles.postMenuDestructive]}>Report post</Text>
             </Pressable>
             <Pressable onPress={() => setMenuOpen(false)} style={styles.postMenuCancel}>
               <Text style={styles.postMenuCancelText}>Cancel</Text>
@@ -1249,18 +1250,21 @@ const styles = StyleSheet.create({
   },
   modalDismiss: {...StyleSheet.absoluteFillObject},
   postMenuOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.18)'},
-  postMenu: {padding: 18, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: pastelColors.white},
-  postMenuTitle: {fontSize: 20, fontWeight: '900', color: pastelColors.auth.deepText, marginBottom: 8},
+  postMenu: {padding: 18, paddingBottom: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: pastelColors.auth.background},
+  postMenuTitle: {fontSize: 21, fontWeight: '900', color: pastelColors.auth.deepText, marginBottom: 10},
   postMenuRow: {
-    minHeight: 44,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    minHeight: 52,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
     borderRadius: 14,
-    marginTop: 4,
-    justifyContent: 'center',
-    backgroundColor: pastelColors.auth.background,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: pastelColors.white,
   },
   postMenuRowText: {fontWeight: '800', color: pastelColors.auth.deepText},
+  postMenuDestructive: {color: '#C45C5C'},
   postMenuCancel: {marginTop: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center'},
   postMenuCancelText: {fontWeight: '800', color: pastelColors.auth.mutedText},
   reportSheet: {

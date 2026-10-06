@@ -238,7 +238,6 @@ export default function CommunityHomeScreen() {
   const [withdrawRequestOpen, setWithdrawRequestOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
-  const [shareMenuPostId, setShareMenuPostId] = useState<string | null>(null);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('harassment');
@@ -277,7 +276,6 @@ export default function CommunityHomeScreen() {
 
   const shareFeedPost = useCallback(async (post: Post, whatsapp = false) => {
     setPostMenuId(null);
-    setShareMenuPostId(null);
     const message = buildCommunityPostShareMessage({
       communityName: community?.name || 'Community',
       alias: post.alias,
@@ -980,55 +978,33 @@ export default function CommunityHomeScreen() {
         onSubmit={sendRequest}
       />
 
-      <Modal visible={Boolean(postMenuId)} transparent animationType="fade" onRequestClose={() => setPostMenuId(null)}>
+      <Modal visible={Boolean(postMenuId)} transparent animationType="slide" onRequestClose={() => setPostMenuId(null)}>
         <Pressable style={styles.postMenuOverlay} onPress={() => setPostMenuId(null)}>
           <View style={styles.postMenu}>
             <Text style={styles.optionsTitle}>Post options</Text>
             <Pressable style={styles.optionsRow} onPress={() => {
-              setShareMenuPostId(postMenuId);
-              setPostMenuId(null);
+              const post = posts.find(item => item.id === postMenuId);
+              if (post) shareFeedPost(post);
             }}>
               <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
               <Text style={styles.optionsRowText}>Share</Text>
+            </Pressable>
+            <Pressable style={styles.optionsRow} onPress={() => {
+              const post = posts.find(item => item.id === postMenuId);
+              if (post) shareFeedPost(post, true);
+            }}>
+              <Feather name="message-circle" size={18} color="#25D366" />
+              <Text style={styles.optionsRowText}>Share on WhatsApp</Text>
             </Pressable>
             <Pressable style={styles.optionsRow} onPress={() => {
               setReportPostId(postMenuId);
               setPostMenuId(null);
               setReportOpen(true);
             }}>
-              <Feather name="flag" size={18} color={pastelColors.auth.deepText} />
-              <Text style={styles.optionsRowText}>Report post</Text>
+              <Feather name="flag" size={18} color="#C45C5C" />
+              <Text style={[styles.optionsRowText, styles.destructiveText]}>Report post</Text>
             </Pressable>
             <Pressable style={styles.optionsCancel} onPress={() => setPostMenuId(null)}>
-              <Text style={styles.optionsCancelText}>Cancel</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
-      <Modal visible={Boolean(shareMenuPostId)} transparent animationType="fade" onRequestClose={() => setShareMenuPostId(null)}>
-        <Pressable style={styles.postMenuOverlay} onPress={() => setShareMenuPostId(null)}>
-          <View style={styles.postMenu}>
-            <Text style={styles.optionsTitle}>Share post</Text>
-            <Pressable
-              style={styles.optionsRow}
-              onPress={() => {
-                const post = posts.find(item => item.id === shareMenuPostId);
-                if (post) shareFeedPost(post);
-              }}>
-              <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />
-              <Text style={styles.optionsRowText}>Share...</Text>
-            </Pressable>
-            <Pressable
-              style={styles.optionsRow}
-              onPress={() => {
-                const post = posts.find(item => item.id === shareMenuPostId);
-                if (post) shareFeedPost(post, true);
-              }}>
-              <Feather name="message-circle" size={18} color={pastelColors.auth.deepText} />
-              <Text style={styles.optionsRowText}>Share on WhatsApp</Text>
-            </Pressable>
-            <Pressable style={styles.optionsCancel} onPress={() => setShareMenuPostId(null)}>
               <Text style={styles.optionsCancelText}>Cancel</Text>
             </Pressable>
           </View>
