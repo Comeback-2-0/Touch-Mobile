@@ -1,5 +1,8 @@
 module.exports = {
   preset: 'react-native',
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation)/)',
+  ],
   moduleNameMapper: {
     '\\.svg$': '<rootDir>/__mocks__/svgMock.tsx',
     '^@react-native-firebase/messaging$': '<rootDir>/__mocks__/firebaseMessaging.ts',

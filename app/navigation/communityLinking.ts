@@ -76,7 +76,10 @@ export const communityLinking: LinkingOptions<RootStackParamList> = {
                 screens: {
                   CommunityBrowse: '',
                   CommunityHome: ':communityId',
-                  CommunityPost: ':communityId/post/:contentId',
+                  CommunityPost: {
+                    path: ':communityId/post/:contentId',
+                    alias: [{path: 'c/:communityId/p/:contentId', exact: true}],
+                  },
                   CommunityCreate: 'create',
                   CommunityCompose: ':communityId/compose',
                   CommunityQueue: ':communityId/queue',

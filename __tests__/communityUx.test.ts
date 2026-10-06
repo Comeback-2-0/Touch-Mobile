@@ -16,10 +16,22 @@ import {
 import {
   TOUCH_SITE_URL,
   COMMUNITY_SHARE_EXCERPT_LIMIT,
+  communityLinking,
   buildCommunityPostShareLink,
   buildCommunityPostShareMessage,
   buildWhatsAppShareUrl,
 } from '../app/navigation/communityLinking';
+import {getStateFromPath} from '@react-navigation/core';
+
+function getFocusedRoute(path: string) {
+  let state: any = getStateFromPath(path, communityLinking.config);
+  let route: any;
+  while (state?.routes?.length) {
+    route = state.routes[state.index ?? state.routes.length - 1];
+    state = route.state;
+  }
+  return route;
+}
 
 describe('community post sharing', () => {
   it('uses the current Touch site domain for public share links', () => {
@@ -70,6 +82,20 @@ describe('community post sharing', () => {
   it('targets WhatsApp with the encoded exact-post message', () => {
     const message = 'Read the complete post by Kind Lantern on Touch\nhttps://app.touch.dophera.tech/c/c1/p/p1';
     expect(buildWhatsAppShareUrl(message)).toBe(`whatsapp://send?text=${encodeURIComponent(message)}`);
+  });
+
+  it('routes a shared HTTPS post path to the exact community post', () => {
+    expect(getFocusedRoute('/c/community%201/p/post%2F2')).toMatchObject({
+      name: 'CommunityPost',
+      params: {communityId: 'community 1', contentId: 'post/2'},
+    });
+  });
+
+  it('keeps routing the existing custom-scheme post path', () => {
+    expect(getFocusedRoute('/community/community%201/post/post%2F2')).toMatchObject({
+      name: 'CommunityPost',
+      params: {communityId: 'community 1', contentId: 'post/2'},
+    });
   });
 });
 
