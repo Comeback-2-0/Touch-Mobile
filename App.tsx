@@ -1,6 +1,7 @@
 // App.tsx
 import React, { useEffect } from 'react';
 import './app/utils/googleConfig';
+import {Linking} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import SplashScreen from 'react-native-splash-screen';
@@ -13,6 +14,7 @@ import {registerNotificationDevice, registerNotificationToken} from './app/servi
 import messaging from '@react-native-firebase/messaging';
 import {useAuth} from './app/context/AuthContext';
 import {navigationRef, navigateFromCommunityNotification} from './app/navigation/navigationRef';
+import {rememberPendingDeepLink} from './app/navigation/communityLinking';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +52,20 @@ function NotificationRegistration() {
 export default function App() {
   useEffect(() => {
     SplashScreen.hide();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    Linking.getInitialURL().then(url => {
+      if (mounted && url) rememberPendingDeepLink(url);
+    }).catch(() => undefined);
+    const subscription = Linking.addEventListener('url', event => {
+      rememberPendingDeepLink(event.url);
+    });
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
   }, []);
 
   return (

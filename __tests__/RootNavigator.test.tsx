@@ -3,6 +3,8 @@ import renderer, {act} from 'react-test-renderer';
 import RootNavigator from '../app/navigation/RootNavigator';
 import {useAuth} from '../app/context/AuthContext';
 import {useCurrentProfile} from '../app/features/profile/hooks/useCurrentProfile';
+import {navigationRef} from '../app/navigation/navigationRef';
+import {consumePendingDeepLink, rememberPendingDeepLink} from '../app/navigation/communityLinking';
 
 jest.mock('../app/context/AuthContext', () => ({
   useAuth: jest.fn(),
@@ -10,6 +12,13 @@ jest.mock('../app/context/AuthContext', () => ({
 
 jest.mock('../app/features/profile/hooks/useCurrentProfile', () => ({
   useCurrentProfile: jest.fn(),
+}));
+
+jest.mock('../app/navigation/navigationRef', () => ({
+  navigationRef: {
+    isReady: jest.fn(() => true),
+    resetRoot: jest.fn(),
+  },
 }));
 
 const mockScreenNames: string[] = [];
@@ -57,6 +66,9 @@ describe('RootNavigator', () => {
   beforeEach(() => {
     mockScreenNames.length = 0;
     jest.clearAllMocks();
+    act(() => {
+      consumePendingDeepLink();
+    });
     jest.mocked(useCurrentProfile).mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -166,5 +178,36 @@ describe('RootNavigator', () => {
     });
 
     expect(mockScreenNames).toContain('Main');
+  });
+
+  it('restores a pending post link after the authenticated profile is ready', () => {
+    jest.mocked(useAuth).mockReturnValue({
+      user: {_id: 'u1', name: 'Maya', email: 'maya@example.com'},
+      loading: false,
+      signInWithGoogle: jest.fn(),
+      signOut: jest.fn(),
+    });
+    jest.mocked(useCurrentProfile).mockReturnValue({
+      data: {isProfileComplete: true},
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    act(() => {
+      rememberPendingDeepLink('https://app.touch.dophera.tech/c/c1/p/p1');
+    });
+
+    act(() => {
+      renderer.create(<RootNavigator />);
+    });
+
+    const state: any = jest.mocked(navigationRef.resetRoot).mock.calls[0][0];
+    const communityState = state.routes[0].state.routes[0].state.routes[0].state;
+    expect(communityState.routes.map((route: any) => route.name)).toEqual([
+      'CommunityBrowse',
+      'CommunityHome',
+      'CommunityPost',
+    ]);
+    expect(communityState.routes[2].params).toEqual({communityId: 'c1', contentId: 'p1'});
   });
 });

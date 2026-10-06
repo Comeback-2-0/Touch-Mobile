@@ -9,6 +9,12 @@ import {useCurrentProfile} from '../features/profile/hooks/useCurrentProfile';
 import {AUTH_ERROR_MESSAGES} from '../utils/authErrors';
 import {clearAuthTokens} from '../utils/authTokenStorage';
 import {useAuthStore} from '../features/profile/store/authStore';
+import {navigationRef} from './navigationRef';
+import {
+  consumePendingDeepLink,
+  getNavigationStateFromUrl,
+  usePendingDeepLink,
+} from './communityLinking';
 
 export type RootStackParamList = {
   Auth: {authError?: string} | undefined;
@@ -23,6 +29,7 @@ export default function RootNavigator() {
   const resetAuth = useAuthStore(state => state.resetAuth);
   const profileQuery = useCurrentProfile({enabled: Boolean(user)});
   const [authError, setAuthError] = useState<string | undefined>();
+  const pendingDeepLink = usePendingDeepLink();
 
   useEffect(() => {
     if (!user || !profileQuery.isError) return;
@@ -38,6 +45,23 @@ export default function RootNavigator() {
       cancelled = true;
     };
   }, [profileQuery.isError, resetAuth, user]);
+
+  useEffect(() => {
+    if (
+      !pendingDeepLink
+      || !user
+      || loading
+      || profileQuery.isLoading
+      || profileQuery.isError
+      || profileQuery.data?.isProfileComplete !== true
+      || !navigationRef.isReady()
+      || typeof (navigationRef as any).resetRoot !== 'function'
+    ) return;
+
+    const state = getNavigationStateFromUrl(pendingDeepLink);
+    consumePendingDeepLink();
+    if (state) (navigationRef as any).resetRoot(state);
+  }, [loading, pendingDeepLink, profileQuery.data?.isProfileComplete, profileQuery.isError, profileQuery.isLoading, user]);
 
   if (loading) return <AuthLoadingScreen />;
 

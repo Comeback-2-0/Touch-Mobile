@@ -27,6 +27,31 @@ export function navigateFromCommunityNotification(data: CommunityNotificationDat
     screen = 'CommunityManage';
     params = {community: {id: communityId, _id: communityId, name: '', description: '', image: '', membersCount: 0}};
   }
+  if (screen === 'CommunityPost') {
+    const communityRoutes = [
+      {name: 'CommunityBrowse'},
+      {name: 'CommunityHome', params: {communityId}},
+      {name: screen, params},
+    ];
+    navigationRef.resetRoot({
+      index: 0,
+      routes: [{
+        name: 'Main',
+        state: {
+          index: 2,
+          routes: [
+            {name: 'Home'},
+            {name: 'SearchBar'},
+            {name: 'ChatTab', state: {index: 2, routes: communityRoutes}},
+            {name: 'Reels'},
+            {name: 'ProfileTab'},
+          ],
+        },
+      }],
+    });
+    return true;
+  }
+
   navigationRef.dispatch(CommonActions.navigate({
     name: 'Main',
     params: {

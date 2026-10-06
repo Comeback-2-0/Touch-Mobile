@@ -17,6 +17,9 @@ import {
   TOUCH_SITE_URL,
   COMMUNITY_SHARE_EXCERPT_LIMIT,
   communityLinking,
+  getNavigationStateFromUrl,
+  rememberPendingDeepLink,
+  consumePendingDeepLink,
   buildCommunityPostShareLink,
   buildCommunityPostShareMessage,
   buildWhatsAppShareUrl,
@@ -96,6 +99,32 @@ describe('community post sharing', () => {
       name: 'CommunityPost',
       params: {communityId: 'community 1', contentId: 'post/2'},
     });
+  });
+
+  it('puts the committee home behind a deep-linked post for back navigation', () => {
+    const state: any = getNavigationStateFromUrl(
+      'https://app.touch.dophera.tech/c/community%201/p/post%2F2',
+    );
+    const communityState = state.routes[0].state.routes[0].state.routes[0].state;
+
+    expect(communityState.routes.map((route: any) => route.name)).toEqual([
+      'CommunityBrowse',
+      'CommunityHome',
+      'CommunityPost',
+    ]);
+    expect(communityState.index).toBe(2);
+    expect(communityState.routes[1].params).toEqual({communityId: 'community 1'});
+    expect(communityState.routes[2].params).toEqual({
+      communityId: 'community 1',
+      contentId: 'post/2',
+    });
+  });
+
+  it('keeps a deep link pending until authentication is complete', () => {
+    const url = 'https://app.touch.dophera.tech/c/c1/p/p1';
+    rememberPendingDeepLink(url);
+    expect(consumePendingDeepLink()).toBe(url);
+    expect(consumePendingDeepLink()).toBeNull();
   });
 });
 
