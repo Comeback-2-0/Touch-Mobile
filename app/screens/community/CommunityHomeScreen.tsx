@@ -180,12 +180,27 @@ function ScreenHeader({title, onBack}: {title: string; onBack: () => void}) {
   );
 }
 
-function HeroSkeleton() {
+function FeedPostSkeleton() {
   return (
-    <View style={styles.hero}>
-      <View style={styles.heroSkeletonAvatar} />
-      <View style={[styles.skeletonLine, {width: '55%', marginTop: 14}]} />
-      <View style={[styles.skeletonLine, {width: '80%', marginTop: 10}]} />
+    <View style={styles.feedSkeletonCard}>
+      <View style={styles.feedSkeletonIdentity}>
+        <View style={styles.feedSkeletonTextGroup}>
+          <View style={[styles.skeletonLine, styles.feedSkeletonAlias]} />
+          <View style={[styles.skeletonLine, styles.feedSkeletonMeta]} />
+        </View>
+        <View style={styles.feedSkeletonMore} />
+      </View>
+      <View style={styles.feedSkeletonImage} />
+      <View style={styles.feedSkeletonCaption}>
+        <View style={[styles.skeletonLine, styles.feedSkeletonCaptionLine]} />
+        <View style={[styles.skeletonLine, styles.feedSkeletonCaptionLineShort]} />
+      </View>
+      <View style={styles.feedSkeletonActions}>
+        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
+        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
+        <View style={[styles.skeletonLine, styles.feedSkeletonAction]} />
+        <View style={[styles.skeletonLine, styles.feedSkeletonComment]} />
+      </View>
     </View>
   );
 }
@@ -682,9 +697,8 @@ export default function CommunityHomeScreen() {
       <SafeAreaView style={styles.safe}>
         <ScreenHeader title={community?.name || 'Community'} onBack={() => navigation.goBack()} />
         <View style={styles.list}>
-          <HeroSkeleton />
-          <View style={styles.feedSkeleton} />
-          <View style={styles.feedSkeleton} />
+          <FeedPostSkeleton />
+          <FeedPostSkeleton />
         </View>
       </SafeAreaView>
     );
@@ -743,10 +757,17 @@ export default function CommunityHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
-          style={styles.backButton}>
+          android_ripple={{color: pastelColors.auth.primaryOverlay}}
+          style={({pressed}) => [styles.backButton, pressed && styles.headerButtonPressed]}>
           <Feather name="arrow-left" size={22} color={pastelColors.auth.deepText} />
         </Pressable>
-        <Pressable onPress={showCommunityInfo} onLongPress={showCommunityInfo} style={styles.headButton} accessibilityRole="button" accessibilityLabel="Open community information">
+        <Pressable
+          onPress={showCommunityInfo}
+          onLongPress={showCommunityInfo}
+          android_ripple={{color: pastelColors.auth.primaryOverlay}}
+          style={({pressed}) => [styles.headButton, pressed && styles.headerButtonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open community information">
           {community?.image ? (
             <Image source={{uri: community.image}} style={styles.headerAvatar} />
           ) : (
@@ -765,7 +786,8 @@ export default function CommunityHomeScreen() {
               accessibilityLabel={communityJoinHeaderLabel(community, joinRequest?.status)}
               onPress={pending ? confirmCancelRequest : openJoinFlow}
               disabled={sending}
-              style={styles.joinHeaderButton}>
+              android_ripple={{color: 'rgba(255, 255, 255, 0.22)'}}
+              style={({pressed}) => [styles.joinHeaderButton, pressed && styles.joinHeaderButtonPressed]}>
               <Text style={styles.joinHeaderText}>{communityJoinHeaderLabel(community, joinRequest?.status)}</Text>
             </Pressable>
           ) : null}
@@ -774,7 +796,8 @@ export default function CommunityHomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Review queue"
               onPress={() => navigation.navigate('CommunityQueue', {community})}
-              style={styles.iconButton}>
+              android_ripple={{color: pastelColors.auth.primaryOverlay}}
+              style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
               <Feather name="list" size={21} color={pastelColors.auth.deepText} />
             </Pressable>
           ) : null}
@@ -783,12 +806,18 @@ export default function CommunityHomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Submit post"
               onPress={() => navigation.navigate('CommunityCompose', {community})}
-              style={styles.headerAction}>
+              android_ripple={{color: pastelColors.auth.primaryOverlay}}
+              style={({pressed}) => [styles.headerAction, pressed && styles.headerButtonPressed]}>
               <Feather name="plus-square" size={21} color={pastelColors.auth.deepText} />
             </Pressable>
           ) : null}
           {joined ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Community options" onPress={() => setOptionsOpen(true)} style={styles.iconButton}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Community options"
+              onPress={() => setOptionsOpen(true)}
+              android_ripple={{color: pastelColors.auth.primaryOverlay}}
+              style={({pressed}) => [styles.iconButton, pressed && styles.headerButtonPressed]}>
               <Feather name="more-vertical" size={22} color={pastelColors.auth.deepText} />
             </Pressable>
           ) : null}
@@ -1136,6 +1165,7 @@ const styles = StyleSheet.create({
   header: {
     paddingVertical: 10,
     paddingHorizontal: 18,
+    backgroundColor: pastelColors.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1151,7 +1181,11 @@ const styles = StyleSheet.create({
   headerAvatar: {width: 34, height: 34, borderRadius: 10, marginRight: 10},
   headerAvatarFallback: {alignItems: 'center', justifyContent: 'center', backgroundColor: pastelColors.auth.primaryOverlay},
   headerAvatarText: {fontWeight: '900', color: pastelColors.auth.deepText},
-  iconButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center'},
+  headerButtonPressed: {
+    backgroundColor: pastelColors.auth.primaryOverlay,
+    transform: [{scale: 0.96}],
+  },
+  iconButton: {height: 44, width: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
   joinHeaderButton: {
     minHeight: 36,
     paddingHorizontal: 16,
@@ -1160,14 +1194,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: pastelColors.accent,
   },
+  joinHeaderButtonPressed: {
+    backgroundColor: '#D93670',
+    transform: [{scale: 0.97}],
+  },
   joinHeaderText: {color: pastelColors.white, fontWeight: '900'},
-  backButton: {height: 44, width: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -10},
-  actions: {flexDirection: 'row', alignItems: 'center', gap: 2},
+  backButton: {height: 44, width: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: -10},
+  actions: {flexDirection: 'row', alignItems: 'center', gap: 0},
   headerAction: {
     position: 'relative',
     minHeight: 44,
-    minWidth: 50,
-    paddingHorizontal: 6,
+    minWidth: 44,
+    paddingHorizontal: 0,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1379,23 +1418,64 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   emptyState: {alignItems: 'center', paddingVertical: 24},
-  heroSkeletonAvatar: {
-    height: 84,
-    width: 84,
-    borderRadius: 24,
-    backgroundColor: pastelColors.auth.glassSurface,
-  },
   skeletonLine: {
     height: 12,
     borderRadius: 8,
     backgroundColor: pastelColors.auth.glassSurface,
-    alignSelf: 'center',
   },
-  feedSkeleton: {
-    marginTop: 12,
-    height: 120,
+  feedSkeletonCard: {
+    marginBottom: 6,
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(50, 17, 31, 0.04)',
     backgroundColor: pastelColors.white,
+    overflow: 'hidden',
+  },
+  feedSkeletonIdentity: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  feedSkeletonTextGroup: {flex: 1},
+  feedSkeletonAlias: {width: '42%', height: 14},
+  feedSkeletonMeta: {width: '22%', height: 10, marginTop: 4},
+  feedSkeletonMore: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: pastelColors.auth.glassSurface,
+  },
+  feedSkeletonImage: {
+    width: '100%',
+    aspectRatio: 1,
+    maxHeight: 480,
+    marginTop: 2,
+    backgroundColor: pastelColors.auth.glassSurface,
+  },
+  feedSkeletonCaption: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    gap: 8,
+  },
+  feedSkeletonCaptionLine: {width: '92%', height: 16},
+  feedSkeletonCaptionLineShort: {width: '68%', height: 16},
+  feedSkeletonActions: {
+    minHeight: 38,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feedSkeletonAction: {width: 42, height: 22},
+  feedSkeletonComment: {
+    flex: 1,
+    minHeight: 28,
+    borderRadius: 8,
   },
   optionsOverlay: {flex: 1, justifyContent: 'flex-end'},
   reportOverlay: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(50, 17, 31, 0.32)'},
