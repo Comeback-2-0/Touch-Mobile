@@ -134,6 +134,13 @@ if [ $SUCCESS -ne 1 ]; then
     exit 1
 fi
 
+# 8. Patch fmt base.h for Apple Clang (prevents consteval error during compilation)
+echo "▶ Verifying fmt base.h patch for Apple Clang..."
+find "$CI_PRIMARY_REPOSITORY_PATH/ios/Pods" -name "base.h" -path "*/fmt/*" 2>/dev/null | while read -r header; do
+    echo "▶ Checking $header"
+    perl -pi -e 's/#elif defined\(__apple_build_version__\) && __apple_build_version__ < 14000029L/#elif defined(__apple_build_version__)/g' "$header"
+done
+
 # Stop heartbeat before exit
 stop_heartbeat
 

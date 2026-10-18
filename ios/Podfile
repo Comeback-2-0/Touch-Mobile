@@ -57,13 +57,71 @@ target 'Touch' do
       # :ccache_enabled => true
     )
 
-    # Fix deployment target for pods that specify versions below 15.0
-    # Xcode 27 requires a minimum of 15.0
+    # 1. Fix deployment target for pods that specify versions below 15.0
+    # Xcode requires a minimum of 15.0
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
         if deployment_target && Gem::Version.new(deployment_target) < Gem::Version.new('15.0')
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+        end
+      end
+
+      # 2. Fix fmt consteval error on Apple Clang / Xcode 16+
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+          definitions = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+          definitions = [definitions] unless definitions.is_a?(Array)
+          definitions << 'FMT_USE_CONSTEVAL=0' unless definitions.include?('FMT_USE_CONSTEVAL=0')
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
+        end
+      end
+
+      # 3. Suppress Xcode warnings for script phases with no outputs in Pod targets
+      target.build_phases.each do |phase|
+        if phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
+          output_paths = phase.respond_to?(:output_paths) && phase.output_paths ? phase.output_paths : []
+          output_file_list_paths = phase.respond_to?(:output_file_list_paths) && phase.output_file_list_paths ? phase.output_file_list_paths : []
+          has_outputs = !output_paths.empty? || !output_file_list_paths.empty?
+          if !has_outputs && phase.respond_to?(:always_out_of_date=)
+            phase.always_out_of_date = '1'
+          end
+        end
+      end
+    end
+
+    # Suppress Xcode warnings for script phases with no outputs in main project
+    installer.aggregate_targets.each do |aggregate_target|
+      project = aggregate_target.user_project
+      project.targets.each do |target|
+        target.build_phases.each do |phase|
+          if phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
+            output_paths = phase.respond_to?(:output_paths) && phase.output_paths ? phase.output_paths : []
+            output_file_list_paths = phase.respond_to?(:output_file_list_paths) && phase.output_file_list_paths ? phase.output_file_list_paths : []
+            has_outputs = !output_paths.empty? || !output_file_list_paths.empty?
+            if !has_outputs && phase.respond_to?(:always_out_of_date=)
+              phase.always_out_of_date = '1'
+            end
+          end
+        end
+      end
+      project.save
+    end
+
+    # 4. Patch fmt/base.h header directly to disable consteval on Apple Clang
+    fmt_base_headers = Dir.glob(File.join(installer.sandbox.root, 'fmt', '**', 'base.h'))
+    fmt_base_headers.each do |header_file|
+      if File.exist?(header_file)
+        content = File.read(header_file)
+        new_content = content.gsub(
+          '#elif defined(__apple_build_version__) && __apple_build_version__ < 14000029L',
+          '#elif defined(__apple_build_version__)'
+        )
+        if new_content != content
+          File.chmod(0644, header_file)
+          File.write(header_file, new_content)
+          puts "Applied Apple Clang consteval patch to #{header_file}"
         end
       end
     end
