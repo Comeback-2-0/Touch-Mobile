@@ -431,6 +431,7 @@
 			baseConfigurationReference = 5B7EB9410499542E8C5724F5 /* Pods-Touch-TouchTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = K54M9H3JQG;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -447,7 +448,7 @@
 					"-lc++",
 					"$(inherited)",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = roy.ij.touch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pandittalk.touch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Touch.app/Touch";
 			};

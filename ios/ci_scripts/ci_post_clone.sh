@@ -9,6 +9,26 @@
 set -e
 set -x  # Enable command tracing for transparent Xcode Cloud logs
 
+# ── Heartbeat function to prevent Xcode Cloud 15-min inactivity timeout ──
+# Prints a dot every 60 seconds so stdout is never silent for too long.
+start_heartbeat() {
+    while true; do
+        sleep 60
+        echo "… heartbeat $(date +%H:%M:%S)"
+    done
+}
+
+stop_heartbeat() {
+    if [ -n "$HEARTBEAT_PID" ]; then
+        kill "$HEARTBEAT_PID" 2>/dev/null || true
+        wait "$HEARTBEAT_PID" 2>/dev/null || true
+    fi
+}
+
+start_heartbeat &
+HEARTBEAT_PID=$!
+trap stop_heartbeat EXIT
+
 echo "▶ Setting up PATH and environment variables..."
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export HOMEBREW_NO_AUTO_UPDATE=1
@@ -80,28 +100,28 @@ done
 # 6. Install JavaScript dependencies
 echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps 2>&1
 
 # 7. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
-MAX_ATTEMPTS=5
+MAX_ATTEMPTS=3
 ATTEMPT=1
 SUCCESS=0
 
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     echo "▶ Running pod install (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
-    if pod install; then
+    if pod install --verbose 2>&1; then
         echo "✅ pod install succeeded on attempt $ATTEMPT!"
         SUCCESS=1
         break
     else
-        echo "⚠️ pod install encountered network/CDN error on attempt $ATTEMPT."
+        echo "⚠️ pod install failed on attempt $ATTEMPT."
         # Keep downloaded specs cache so subsequent attempts resume instead of starting from zero
         if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-            echo "Waiting 15 seconds before retrying (cumulative cache preserved)..."
-            sleep 15
+            echo "Waiting 10 seconds before retrying (cumulative cache preserved)..."
+            sleep 10
         fi
         ATTEMPT=$((ATTEMPT + 1))
     fi
@@ -113,6 +133,9 @@ if [ $SUCCESS -ne 1 ]; then
     find ~/Library/Logs/CocoaPods -type f -exec cat {} + 2>/dev/null || true
     exit 1
 fi
+
+# Stop heartbeat before exit
+stop_heartbeat
 
 echo "✅ ci_post_clone.sh completed successfully."
 exit 0
