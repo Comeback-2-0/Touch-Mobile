@@ -30,7 +30,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(
   Pressable,
 ) as React.ComponentType<any>;
 const AnimatedView = Animated.View as React.ComponentType<any>;
-const APP_ICON = require('../../android/app/src/main/ic_launcher-playstore.png');
+const APP_ICON = require('../../assets/images/app-logo.png');
 const TERMS_URL = 'https://ij-roy.github.io/touch/terms-and-conditions/';
 
 function showAuthToast(message: string | null | undefined) {
