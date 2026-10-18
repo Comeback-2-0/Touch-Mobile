@@ -7,6 +7,7 @@
 # ─────────────────────────────────────────────
 
 set -e
+set -x  # Enable command tracing for transparent Xcode Cloud logs
 
 echo "▶ Setting up PATH and environment variables..."
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -45,14 +46,14 @@ else
     echo "▶ CocoaPods already available: $(pod --version)"
 fi
 
-# 4. Patch CocoaPods CDN timeout from default 10s to 60s
+# 4. Patch CocoaPods CDN timeout from default 10s to 120s
 # CocoaPods cdn_source.rb hardcodes a 10s Typhoeus timeout, causing
 # 'Response: Timeout was reached' when downloading specs from raw.githubusercontent.com.
-echo "▶ Patching CocoaPods CDN request timeouts from 10s to 60s..."
-for f in $(find /opt/homebrew /usr/local /Library/Ruby -name "cdn_source.rb" 2>/dev/null); do
+echo "▶ Patching CocoaPods CDN request timeouts from 10s to 120s..."
+for f in $(find /opt/homebrew /usr/local /System/Library /Library -name "cdn_source.rb" 2>/dev/null); do
     if [ -f "$f" ]; then
         echo "▶ Increasing timeout in $f..."
-        perl -pi -e 's/:timeout => 10/:timeout => 60/g; s/:connecttimeout => 10/:connecttimeout => 60/g' "$f" 2>/dev/null || true
+        perl -pi -e 's/:timeout => \d+/:timeout => 120/g; s/:connecttimeout => \d+/:connecttimeout => 120/g' "$f" 2>/dev/null || true
     fi
 done
 
@@ -77,9 +78,12 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         break
     else
         echo "⚠️ pod install encountered network/CDN error on attempt $ATTEMPT."
+        echo "▶ Cleaning trunk cache before retry..."
+        pod repo remove trunk 2>/dev/null || true
+        
         if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-            echo "Waiting 15 seconds before retrying..."
-            sleep 15
+            echo "Waiting 10 seconds before retrying..."
+            sleep 10
         fi
         ATTEMPT=$((ATTEMPT + 1))
     fi
@@ -87,6 +91,8 @@ done
 
 if [ $SUCCESS -ne 1 ]; then
     echo "❌ pod install failed after $MAX_ATTEMPTS attempts."
+    echo "=== CocoaPods logs ==="
+    find ~/Library/Logs/CocoaPods -type f -exec cat {} + 2>/dev/null || true
     exit 1
 fi
 
