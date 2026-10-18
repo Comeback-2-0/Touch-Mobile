@@ -46,23 +46,43 @@ else
     echo "▶ CocoaPods already available: $(pod --version)"
 fi
 
-# 4. Patch CocoaPods CDN timeout from default 10s to 120s
-# CocoaPods cdn_source.rb hardcodes a 10s Typhoeus timeout, causing
-# 'Response: Timeout was reached' when downloading specs from raw.githubusercontent.com.
-echo "▶ Patching CocoaPods CDN request timeouts from 10s to 120s..."
+# 4. Patch Typhoeus via RUBYOPT to enforce 120s timeout and HTTP/1.1 across all Ruby runs
+cat << 'EOF' > /tmp/typhoeus_patch.rb
+begin
+  require 'typhoeus'
+  module Typhoeus
+    class Request
+      unless method_defined?(:orig_custom_init)
+        alias_method :orig_custom_init, :initialize
+        def initialize(base_url, options = {})
+          options[:timeout] = 120 if options[:timeout] && options[:timeout] < 120
+          options[:connecttimeout] = 120 if options[:connecttimeout] && options[:connecttimeout] < 120
+          options[:http_version] = :httpv1_1 if options[:http_version] == :httpv2_0
+          orig_custom_init(base_url, options)
+        end
+      end
+    end
+  end
+rescue LoadError
+end
+EOF
+
+export RUBYOPT="-r/tmp/typhoeus_patch.rb"
+
+# 5. Also patch physical cdn_source.rb files on disk if found
 for f in $(find /opt/homebrew /usr/local -name "cdn_source.rb" 2>/dev/null || true); do
     if [ -f "$f" ]; then
         echo "▶ Increasing timeout in $f..."
-        perl -pi -e 's/:timeout => \d+/:timeout => 120/g; s/:connecttimeout => \d+/:connecttimeout => 120/g' "$f" 2>/dev/null || true
+        perl -pi -e 's/:timeout => \d+/:timeout => 120/g; s/:connecttimeout => \d+/:connecttimeout => 120/g; s/:http_version => :httpv2_0/:http_version => :httpv1_1/g' "$f" 2>/dev/null || true
     fi
 done
 
-# 5. Install JavaScript dependencies
+# 6. Install JavaScript dependencies
 echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm install --legacy-peer-deps
 
-# 6. Install CocoaPods dependencies with automatic cumulative retries
+# 7. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
@@ -86,23 +106,6 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         ATTEMPT=$((ATTEMPT + 1))
     fi
 done
-
-# 7. Fallback to shallow-cloned Git Specs repository if CDN is persistently blocked
-if [ $SUCCESS -ne 1 ]; then
-    echo "⚠️ CDN attempts exhausted. Falling back to CocoaPods Specs Git repository..."
-    mkdir -p ~/.cocoapods/repos
-    if [ ! -d ~/.cocoapods/repos/master/.git ]; then
-        echo "▶ Shallow-cloning Specs.git to ~/.cocoapods/repos/master..."
-        git clone --depth 1 https://github.com/CocoaPods/Specs.git ~/.cocoapods/repos/master || true
-    fi
-    perl -pi -e 's|https://cdn.cocoapods.org/|https://github.com/CocoaPods/Specs.git|g' "$CI_PRIMARY_REPOSITORY_PATH/ios/Podfile" || true
-    perl -pi -e 's|trunk:|https://github.com/CocoaPods/Specs.git:|g' "$CI_PRIMARY_REPOSITORY_PATH/ios/Podfile.lock" || true
-    echo "▶ Running pod install with Git Specs source..."
-    if pod install; then
-        echo "✅ pod install succeeded via Git Specs fallback!"
-        SUCCESS=1
-    fi
-fi
 
 if [ $SUCCESS -ne 1 ]; then
     echo "❌ pod install failed after all attempts."

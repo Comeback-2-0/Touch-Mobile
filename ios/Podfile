@@ -1,3 +1,23 @@
+# Patch Typhoeus to increase CocoaPods CDN timeout to 120s and use HTTP/1.1
+begin
+  require 'typhoeus'
+  module Typhoeus
+    class Request
+      unless method_defined?(:orig_custom_init)
+        alias_method :orig_custom_init, :initialize
+        def initialize(base_url, options = {})
+          options[:timeout] = 120 if options[:timeout] && options[:timeout] < 120
+          options[:connecttimeout] = 120 if options[:connecttimeout] && options[:connecttimeout] < 120
+          options[:http_version] = :httpv1_1 if options[:http_version] == :httpv2_0
+          orig_custom_init(base_url, options)
+        end
+      end
+    end
+  end
+rescue LoadError
+  # Typhoeus will be required when CocoaPods downloads specs
+end
+
 source 'https://cdn.cocoapods.org/'
 
 # Resolve react_native_pods.rb with node to allow for hoisting
