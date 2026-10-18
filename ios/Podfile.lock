@@ -1980,8 +1980,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-splash-screen (3.3.0):
-    - React-Core
   - react-native-video (6.19.2):
     - boost
     - DoubleConversion
@@ -3166,7 +3164,6 @@ DEPENDENCIES:
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
-  - react-native-splash-screen (from `../node_modules/react-native-splash-screen`)
   - react-native-video (from `../node_modules/react-native-video`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native/ReactCommon/oscompat`)
@@ -3328,8 +3325,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-pager-view"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
-  react-native-splash-screen:
-    :path: "../node_modules/react-native-splash-screen"
   react-native-video:
     :path: "../node_modules/react-native-video"
   React-NativeModulesApple:
@@ -3486,7 +3481,6 @@ SPEC CHECKSUMS:
   react-native-image-picker: 6051cfd030121b880a58f1cc0e5e33e9887804e4
   react-native-pager-view: 3a5c38bfaadea13d891c9acd62130347a8eee8df
   react-native-safe-area-context: 7794f18549493f369e4ca4b3cd66843bd050ac66
-  react-native-splash-screen: 95994222cc95c236bd3cdc59fe45ed5f27969594
   react-native-video: d7e6372a63833708a2f7a8b48fed59036910428c
   React-NativeModulesApple: cbceb3c4cb726838c461b13802a76cefa6f3476f
   React-oscompat: eb0626e8ba1a2c61673c991bf9dc21834898475d
