@@ -105,6 +105,26 @@ target 'Touch' do
             end
           end
         end
+
+        # Ensure Swift toolchain search paths and settings on Touch target
+        if target.name == 'Touch'
+          target.build_configurations.each do |config|
+            config.build_settings['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
+            config.build_settings['SWIFT_VERSION'] = '5.0'
+            config.build_settings['SWIFT_OBJC_BRIDGING_HEADER'] = 'Touch/Touch-Bridging-Header.h'
+            lib_paths = config.build_settings['LIBRARY_SEARCH_PATHS'] || ['$(inherited)']
+            lib_paths = [lib_paths] unless lib_paths.is_a?(Array)
+            [
+              '$(inherited)',
+              '"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)"',
+              '"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)"',
+              '"$(SDKROOT)/usr/lib/swift"'
+            ].each do |path|
+              lib_paths << path unless lib_paths.include?(path)
+            end
+            config.build_settings['LIBRARY_SEARCH_PATHS'] = lib_paths
+          end
+        end
       end
       project.save
     end

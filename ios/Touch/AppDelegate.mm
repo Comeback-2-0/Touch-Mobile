@@ -2,6 +2,12 @@
 
 #import <React/RCTBundleURLProvider.h>
 
+// Fallback weak stubs for Swift backward compatibility auto-linking in Xcode
+extern "C" {
+  __attribute__((weak)) void* __swift_FORCE_LOAD_$_swiftCompatibility56 = nullptr;
+  __attribute__((weak)) void* __swift_FORCE_LOAD_$_swiftCompatibilityPacks = nullptr;
+}
+
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
