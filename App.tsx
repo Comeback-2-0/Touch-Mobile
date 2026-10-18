@@ -4,7 +4,6 @@ import './app/utils/googleConfig';
 import {Linking} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import SplashScreen from 'react-native-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppSystemBars from './app/components/AppSystemBars';
 import { AuthProvider } from './app/context/AuthContext';
@@ -50,10 +49,6 @@ function NotificationRegistration() {
 }
 
 export default function App() {
-  useEffect(() => {
-    SplashScreen.hide();
-  }, []);
-
   useEffect(() => {
     let mounted = true;
     Linking.getInitialURL().then(url => {
