@@ -8,8 +8,15 @@
 
 set -e
 
-echo "▶ Setting up PATH for Homebrew and system binaries..."
+echo "▶ Setting up PATH and environment variables..."
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export HOMEBREW_NO_AUTO_UPDATE=1
+export COCOAPODS_DISABLE_STATS=true
+
+# Git network resilience
+git config --global http.postBuffer 524288000 || true
+git config --global http.lowSpeedLimit 1000 || true
+git config --global http.lowSpeedTime 60 || true
 
 # Resolve repository root
 CI_PRIMARY_REPOSITORY_PATH="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
@@ -43,10 +50,34 @@ echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm install --legacy-peer-deps
 
-# 5. Install CocoaPods dependencies
+# 5. Install CocoaPods dependencies with automatic retries for CDN resilience
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
-pod install
+
+MAX_ATTEMPTS=5
+ATTEMPT=1
+SUCCESS=0
+
+while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    echo "▶ Running pod install (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
+    if pod install; then
+        echo "✅ pod install succeeded on attempt $ATTEMPT!"
+        SUCCESS=1
+        break
+    else
+        echo "⚠️ pod install encountered network/CDN error on attempt $ATTEMPT."
+        if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+            echo "Waiting 15 seconds before retrying..."
+            sleep 15
+        fi
+        ATTEMPT=$((ATTEMPT + 1))
+    fi
+done
+
+if [ $SUCCESS -ne 1 ]; then
+    echo "❌ pod install failed after $MAX_ATTEMPTS attempts."
+    exit 1
+fi
 
 echo "✅ ci_post_clone.sh completed successfully."
 exit 0
