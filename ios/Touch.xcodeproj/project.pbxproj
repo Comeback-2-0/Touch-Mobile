@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* TouchTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* TouchTests.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
+		A89F4D8C6E2B4A1F9C3D7E10 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = B17E5C9A4D3F2A8E6C1B9075 /* GoogleService-Info.plist */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		5D46762D6DF69E5C09158D67 /* Dummy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08D3A03CAAFF70F4C17C78E /* Dummy.swift */; };
@@ -40,6 +41,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Touch/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = Touch/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = Touch/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B17E5C9A4D3F2A8E6C1B9075 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = Touch/GoogleService-Info.plist; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-Touch.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Touch.debug.xcconfig"; path = "Target Support Files/Pods-Touch/Pods-Touch.debug.xcconfig"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-Touch.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Touch.release.xcconfig"; path = "Target Support Files/Pods-Touch/Pods-Touch.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-Touch-TouchTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Touch-TouchTests.debug.xcconfig"; path = "Target Support Files/Pods-Touch-TouchTests/Pods-Touch-TouchTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -100,6 +102,7 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				C08D3A03CAAFF70F4C17C78E /* Dummy.swift */,
 				07A09E2B37817C52DE8A3FDE /* Touch-Bridging-Header.h */,
+				B17E5C9A4D3F2A8E6C1B9075 /* GoogleService-Info.plist */,
 			);
 			name = Touch;
 			sourceTree = "<group>";
@@ -253,6 +256,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				7296C98BE90643389DB6899D /* PrivacyInfo.xcprivacy in Resources */,
+				A89F4D8C6E2B4A1F9C3D7E10 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
