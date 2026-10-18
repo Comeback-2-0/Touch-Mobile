@@ -34,6 +34,9 @@ async function requestNotificationPermission() {
 
 export async function registerNotificationDevice() {
   if (!await hasNotificationPermission() && !await requestNotificationPermission()) return null;
+  if (Platform.OS === 'ios') {
+    await messaging().registerDeviceForRemoteMessages();
+  }
   const token = await messaging().getToken();
   if (!token) return null;
   await api.post('/notifications/devices', {token, platform: Platform.OS, appVersion: getVersion()});
