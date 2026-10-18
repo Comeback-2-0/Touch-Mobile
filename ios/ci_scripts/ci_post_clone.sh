@@ -45,16 +45,27 @@ else
     echo "▶ CocoaPods already available: $(pod --version)"
 fi
 
-# 4. Install JavaScript dependencies
+# 4. Patch CocoaPods CDN timeout from default 10s to 60s
+# CocoaPods cdn_source.rb hardcodes a 10s Typhoeus timeout, causing
+# 'Response: Timeout was reached' when downloading specs from raw.githubusercontent.com.
+echo "▶ Patching CocoaPods CDN request timeouts from 10s to 60s..."
+for f in $(find /opt/homebrew /usr/local /Library/Ruby -name "cdn_source.rb" 2>/dev/null); do
+    if [ -f "$f" ]; then
+        echo "▶ Increasing timeout in $f..."
+        perl -pi -e 's/:timeout => 10/:timeout => 60/g; s/:connecttimeout => 10/:connecttimeout => 60/g' "$f" 2>/dev/null || true
+    fi
+done
+
+# 5. Install JavaScript dependencies
 echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm install --legacy-peer-deps
 
-# 5. Install CocoaPods dependencies with automatic retries for CDN resilience
+# 6. Install CocoaPods dependencies with automatic retries for CDN resilience
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
-MAX_ATTEMPTS=5
+MAX_ATTEMPTS=4
 ATTEMPT=1
 SUCCESS=0
 
