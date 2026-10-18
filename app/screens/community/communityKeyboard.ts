@@ -1,14 +1,9 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {
-  Dimensions,
-  findNodeHandle,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  UIManager,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
 } from 'react-native';
 
 const FIELD_GAP = 28;
@@ -26,12 +21,6 @@ export function scrollOffsetToRevealField(
   const overflow = fieldBottom - visibleBottom;
   if (overflow <= 0) return Math.max(0, currentOffset);
   return currentOffset + overflow;
-}
-
-function nativeHandle(event: NativeSyntheticEvent<TextInputFocusEventData>) {
-  const target = (event as {target?: unknown}).target ?? event.nativeEvent?.target;
-  if (typeof target === 'number') return target;
-  return findNodeHandle(target as Parameters<typeof findNodeHandle>[0]);
 }
 
 export function useKeyboardHeight() {
@@ -60,24 +49,16 @@ export function useKeyboardAwareScroll() {
   const offsetY = useRef(0);
   const keyboardHeight = useKeyboardHeight();
 
-  const onInputFocus = useCallback((event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-    const handle = nativeHandle(event);
+  const onInputFocus = useCallback(() => {
     const delay = Platform.OS === 'ios' ? 60 : 320;
     setTimeout(() => {
-      const kb = Keyboard.metrics()?.height || keyboardHeight;
-      const visibleBottom = Dimensions.get('window').height - kb - FIELD_GAP;
-      if (!handle) {
-        scrollRef.current?.scrollToEnd({animated: true});
-        return;
-      }
-      UIManager.measureInWindow(handle, (_x, y, _width, height) => {
-        const nextY = scrollOffsetToRevealField(offsetY.current, y + height, visibleBottom);
-        if (nextY !== offsetY.current) {
-          scrollRef.current?.scrollTo({y: nextY, animated: true});
-        }
-      });
+      // React Native's New Architecture no longer guarantees the legacy
+      // findNodeHandle/UIManager measurement path. KeyboardAvoidingView and
+      // automatic insets handle the viewport; scrolling to the end keeps the
+      // focused field visible without relying on deprecated native APIs.
+      scrollRef.current?.scrollToEnd({animated: true});
     }, delay);
-  }, [keyboardHeight]);
+  }, []);
 
   return {
     scrollRef,
