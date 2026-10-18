@@ -50,7 +50,7 @@ fi
 # CocoaPods cdn_source.rb hardcodes a 10s Typhoeus timeout, causing
 # 'Response: Timeout was reached' when downloading specs from raw.githubusercontent.com.
 echo "▶ Patching CocoaPods CDN request timeouts from 10s to 120s..."
-for f in $(find /opt/homebrew /usr/local /System/Library /Library -name "cdn_source.rb" 2>/dev/null); do
+for f in $(find /opt/homebrew /usr/local -name "cdn_source.rb" 2>/dev/null || true); do
     if [ -f "$f" ]; then
         echo "▶ Increasing timeout in $f..."
         perl -pi -e 's/:timeout => \d+/:timeout => 120/g; s/:connecttimeout => \d+/:connecttimeout => 120/g' "$f" 2>/dev/null || true
@@ -62,11 +62,11 @@ echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm install --legacy-peer-deps
 
-# 6. Install CocoaPods dependencies with automatic retries for CDN resilience
+# 6. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
-MAX_ATTEMPTS=4
+MAX_ATTEMPTS=5
 ATTEMPT=1
 SUCCESS=0
 
@@ -78,19 +78,34 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         break
     else
         echo "⚠️ pod install encountered network/CDN error on attempt $ATTEMPT."
-        echo "▶ Cleaning trunk cache before retry..."
-        pod repo remove trunk 2>/dev/null || true
-        
+        # Keep downloaded specs cache so subsequent attempts resume instead of starting from zero
         if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-            echo "Waiting 10 seconds before retrying..."
-            sleep 10
+            echo "Waiting 15 seconds before retrying (cumulative cache preserved)..."
+            sleep 15
         fi
         ATTEMPT=$((ATTEMPT + 1))
     fi
 done
 
+# 7. Fallback to shallow-cloned Git Specs repository if CDN is persistently blocked
 if [ $SUCCESS -ne 1 ]; then
-    echo "❌ pod install failed after $MAX_ATTEMPTS attempts."
+    echo "⚠️ CDN attempts exhausted. Falling back to CocoaPods Specs Git repository..."
+    mkdir -p ~/.cocoapods/repos
+    if [ ! -d ~/.cocoapods/repos/master/.git ]; then
+        echo "▶ Shallow-cloning Specs.git to ~/.cocoapods/repos/master..."
+        git clone --depth 1 https://github.com/CocoaPods/Specs.git ~/.cocoapods/repos/master || true
+    fi
+    perl -pi -e 's|https://cdn.cocoapods.org/|https://github.com/CocoaPods/Specs.git|g' "$CI_PRIMARY_REPOSITORY_PATH/ios/Podfile" || true
+    perl -pi -e 's|trunk:|https://github.com/CocoaPods/Specs.git:|g' "$CI_PRIMARY_REPOSITORY_PATH/ios/Podfile.lock" || true
+    echo "▶ Running pod install with Git Specs source..."
+    if pod install; then
+        echo "✅ pod install succeeded via Git Specs fallback!"
+        SUCCESS=1
+    fi
+fi
+
+if [ $SUCCESS -ne 1 ]; then
+    echo "❌ pod install failed after all attempts."
     echo "=== CocoaPods logs ==="
     find ~/Library/Logs/CocoaPods -type f -exec cat {} + 2>/dev/null || true
     exit 1
