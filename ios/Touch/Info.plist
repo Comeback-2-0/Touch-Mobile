@@ -49,6 +49,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to your microphone to record audio for reels and videos.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Let me Use That plzzzz</string>
 	<key>NSPhotoLibraryUsageDescription</key>
