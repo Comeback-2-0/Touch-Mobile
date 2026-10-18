@@ -1,0 +1,5 @@
+# Enforce Unix line endings for shell scripts (required for Xcode Cloud)
+*.sh text eol=lf
+
+# Auto-detect all other files
+* text=auto
