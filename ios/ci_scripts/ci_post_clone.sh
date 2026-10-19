@@ -33,6 +33,10 @@ echo "▶ Setting up PATH and environment variables..."
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export HOMEBREW_NO_AUTO_UPDATE=1
 export COCOAPODS_DISABLE_STATS=true
+# React Native's new-architecture code generation adds a long-running phase to
+# CocoaPods on the Xcode Cloud runner. The app does not opt into new-architecture
+# modules, so keep the CI pod graph on the stable architecture used by the app.
+export RCT_NEW_ARCH_ENABLED=0
 
 # Git network resilience
 git config --global http.postBuffer 524288000 || true
