@@ -94,40 +94,18 @@ echo "▶ Installing JS dependencies from package-lock.json..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm ci --legacy-peer-deps --no-audit --no-fund 2>&1
 
-# 6. Install CocoaPods dependencies with automatic cumulative retries
+# 6. Install CocoaPods dependencies.
+# Xcode Cloud limits the post-clone action duration. Retrying a full React
+# Native codegen run can outlive that limit, so fail fast and let the build
+# report the real CocoaPods error instead of spending the whole action retrying.
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
-MAX_ATTEMPTS=3
-ATTEMPT=1
-SUCCESS=0
-
-while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    echo "▶ Running pod install (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
-    # The lockfile is committed and must be authoritative in Xcode Cloud.
-    # Deployment mode avoids re-resolving every historical CDN spec (notably
-    # TOCropViewController), which can hang on CDN redirects.
-    if pod install --deployment --no-repo-update --verbose 2>&1; then
-        echo "✅ pod install succeeded on attempt $ATTEMPT!"
-        SUCCESS=1
-        break
-    else
-        echo "⚠️ pod install failed on attempt $ATTEMPT."
-        # Keep downloaded specs cache so subsequent attempts resume instead of starting from zero
-        if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-            echo "Waiting 10 seconds before retrying (cumulative cache preserved)..."
-            sleep 10
-        fi
-        ATTEMPT=$((ATTEMPT + 1))
-    fi
-done
-
-if [ $SUCCESS -ne 1 ]; then
-    echo "❌ pod install failed after all attempts."
-    echo "=== CocoaPods logs ==="
-    find ~/Library/Logs/CocoaPods -type f -exec cat {} + 2>/dev/null || true
-    exit 1
-fi
+# The lockfile is committed and must be authoritative in Xcode Cloud.
+# Avoid verbose CocoaPods output: it makes the post-clone log enormous without
+# changing the install result.
+pod install --deployment --no-repo-update --silent
+echo "✅ pod install succeeded."
 
 # 7. Patch fmt base.h for Apple Clang (prevents consteval error during compilation)
 echo "▶ Verifying fmt base.h patch for Apple Clang..."
