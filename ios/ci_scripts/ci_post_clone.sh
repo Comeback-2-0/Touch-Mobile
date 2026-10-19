@@ -90,9 +90,9 @@ EOF
 export RUBYOPT="-r/tmp/typhoeus_patch.rb"
 
 # 5. Install JavaScript dependencies
-echo "▶ Installing JS dependencies..."
+echo "▶ Installing JS dependencies from package-lock.json..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
-npm install --legacy-peer-deps 2>&1
+npm ci --legacy-peer-deps 2>&1
 
 # 6. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
