@@ -89,20 +89,12 @@ EOF
 
 export RUBYOPT="-r/tmp/typhoeus_patch.rb"
 
-# 5. Also patch physical cdn_source.rb files on disk if found
-for f in $(find /opt/homebrew /usr/local -name "cdn_source.rb" 2>/dev/null || true); do
-    if [ -f "$f" ]; then
-        echo "▶ Increasing timeout in $f..."
-        perl -pi -e 's/:timeout => \d+/:timeout => 120/g; s/:connecttimeout => \d+/:connecttimeout => 120/g; s/:http_version => :httpv2_0/:http_version => :httpv1_1/g' "$f" 2>/dev/null || true
-    fi
-done
-
-# 6. Install JavaScript dependencies
+# 5. Install JavaScript dependencies
 echo "▶ Installing JS dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 npm install --legacy-peer-deps 2>&1
 
-# 7. Install CocoaPods dependencies with automatic cumulative retries
+# 6. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
@@ -134,7 +126,7 @@ if [ $SUCCESS -ne 1 ]; then
     exit 1
 fi
 
-# 8. Patch fmt base.h for Apple Clang (prevents consteval error during compilation)
+# 7. Patch fmt base.h for Apple Clang (prevents consteval error during compilation)
 echo "▶ Verifying fmt base.h patch for Apple Clang..."
 find "$CI_PRIMARY_REPOSITORY_PATH/ios/Pods" -name "base.h" -path "*/fmt/*" 2>/dev/null | while read -r header; do
     echo "▶ Checking $header"
