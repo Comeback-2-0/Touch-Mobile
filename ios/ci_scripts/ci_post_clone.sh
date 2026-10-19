@@ -104,7 +104,10 @@ SUCCESS=0
 
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     echo "▶ Running pod install (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
-    if pod install --no-repo-update --verbose 2>&1; then
+    # The lockfile is committed and must be authoritative in Xcode Cloud.
+    # Deployment mode avoids re-resolving every historical CDN spec (notably
+    # TOCropViewController), which can hang on CDN redirects.
+    if pod install --deployment --no-repo-update --verbose 2>&1; then
         echo "✅ pod install succeeded on attempt $ATTEMPT!"
         SUCCESS=1
         break
