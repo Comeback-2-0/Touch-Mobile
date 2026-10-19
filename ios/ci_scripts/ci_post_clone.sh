@@ -101,10 +101,12 @@ npm ci --legacy-peer-deps --no-audit --no-fund 2>&1
 echo "▶ Installing CocoaPods dependencies..."
 cd "$CI_PRIMARY_REPOSITORY_PATH/ios"
 
-# The lockfile is committed and must be authoritative in Xcode Cloud.
-# Avoid verbose CocoaPods output: it makes the post-clone log enormous without
-# changing the install result.
-pod install --deployment --no-repo-update --silent
+# The lockfile pins versions, but generated React Native podspec checksums can
+# change with the installed JS tree. Allow CocoaPods to refresh those checksums
+# instead of failing deployment mode before Xcode can build.
+# Avoid verbose output: it makes the post-clone log enormous without changing
+# the install result.
+pod install --no-repo-update --silent
 echo "✅ pod install succeeded."
 
 # 7. Patch fmt base.h for Apple Clang (prevents consteval error during compilation)
