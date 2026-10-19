@@ -10,8 +10,7 @@ type Props = {navigationReady: boolean};
 /** Owns Firebase notification subscriptions. It starts only after the JS tree,
  * navigation, authentication, and foreground lifecycle are all ready. */
 export function NotificationCoordinator({navigationReady}: Props) {
-  const auth = typeof useAuth === 'function' ? useAuth() : null;
-  const user = auth?.user ?? null;
+  const {user} = useAuth();
   const started = useRef(false);
   const [currentAppState, setCurrentAppState] = useState<AppStateStatus>(AppState.currentState);
 
