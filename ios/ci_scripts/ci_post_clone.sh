@@ -92,7 +92,7 @@ export RUBYOPT="-r/tmp/typhoeus_patch.rb"
 # 5. Install JavaScript dependencies
 echo "▶ Installing JS dependencies from package-lock.json..."
 cd "$CI_PRIMARY_REPOSITORY_PATH"
-npm ci --legacy-peer-deps 2>&1
+npm ci --legacy-peer-deps --no-audit --no-fund 2>&1
 
 # 6. Install CocoaPods dependencies with automatic cumulative retries
 echo "▶ Installing CocoaPods dependencies..."
@@ -104,7 +104,7 @@ SUCCESS=0
 
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     echo "▶ Running pod install (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
-    if pod install --verbose 2>&1; then
+    if pod install --no-repo-update --verbose 2>&1; then
         echo "✅ pod install succeeded on attempt $ATTEMPT!"
         SUCCESS=1
         break
