@@ -13,7 +13,9 @@ export type CommunityNotificationData = {
   requestId?: string;
 };
 
-export function navigateFromCommunityNotification(data: CommunityNotificationData) {
+let pendingCommunityNotification: CommunityNotificationData | null = null;
+
+function navigateNow(data: CommunityNotificationData) {
   const communityId = data.communityId;
   if (!navigationRef.isReady() || !communityId) return false;
   const target = data.target || (data.contentId ? 'post' : 'community');
@@ -35,29 +37,36 @@ export function navigateFromCommunityNotification(data: CommunityNotificationDat
     ];
     navigationRef.resetRoot({
       index: 0,
-      routes: [{
-        name: 'Main',
-        state: {
-          index: 2,
-          routes: [
-            {name: 'Home'},
-            {name: 'SearchBar'},
-            {name: 'ChatTab', state: {index: 2, routes: communityRoutes}},
-            {name: 'Reels'},
-            {name: 'ProfileTab'},
-          ],
-        },
-      }],
+      routes: [{name: 'Main', state: {index: 2, routes: [
+        {name: 'Home'}, {name: 'SearchBar'},
+        {name: 'ChatTab', state: {index: 2, routes: communityRoutes}},
+        {name: 'Reels'}, {name: 'ProfileTab'},
+      ]}}],
     });
     return true;
   }
-
   navigationRef.dispatch(CommonActions.navigate({
-    name: 'Main',
-    params: {
-      screen: 'MainTabs',
-      params: {screen: 'ChatTab', params: {screen, params}},
-    },
+    name: 'Main', params: {screen: 'MainTabs', params: {screen: 'ChatTab', params: {screen, params}}},
   }));
   return true;
+}
+
+export function navigateFromCommunityNotification(data: CommunityNotificationData) {
+  if (!data.communityId) return false;
+  if (!navigateNow(data)) {
+    pendingCommunityNotification = data;
+  }
+  return false;
+}
+
+export function flushPendingCommunityNotification() {
+  if (!pendingCommunityNotification) return false;
+  const pending = pendingCommunityNotification;
+  if (!navigateNow(pending)) return false;
+  pendingCommunityNotification = null;
+  return true;
+}
+
+export function resetPendingCommunityNotificationsForTests() {
+  pendingCommunityNotification = null;
 }

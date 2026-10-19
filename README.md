@@ -68,6 +68,23 @@ You've successfully run and modified your React Native App. :partying_face:
 
 If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
 
+## Mobile lifecycle and native callbacks
+
+This app has native-to-JavaScript event sources (Firebase Messaging, deep links,
+AppState, and navigation). Keep their ownership and startup order explicit:
+
+```text
+React root mounted -> NavigationContainer onReady -> app active -> authenticated -> subscriptions
+```
+
+- `NavigationContainer` with `linking={communityLinking}` is the single owner of deep-link routing. Do not add a second `Linking.addEventListener` path in `App.tsx`.
+- `NotificationCoordinator` is the single owner of Firebase Messaging listeners. It must be idempotent, clean up every subscription, and start only after navigation is ready, the app is active, and authentication is available.
+- Notification taps are intents. They must be queued until `navigationRef.isReady()` and then flushed; never drop them because startup is still in progress.
+- Native callbacks must not be invoked from module construction or after teardown. Prefer the public React Native Firebase listener APIs and always retain and call their unsubscribe functions.
+- Do not solve lifecycle races with arbitrary delays, duplicate listeners, manual React Native callable-module registration, or disabling the New Architecture without evidence.
+
+When changing startup, notification, authentication, or deep-link code, test Android and iOS cold launch, background notification taps, foreground notifications, deep links, login, logout, and repeated mount/unmount cycles.
+
 # Learn More
 
 To learn more about React Native, take a look at the following resources:
