@@ -76,3 +76,6 @@ structure.txt
 prompt.txt
 android/keystore.properties
 /.community-figma
+Build Touch*.txt
+Touch */
+*.xcarchive

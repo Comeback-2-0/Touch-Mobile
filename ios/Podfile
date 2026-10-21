@@ -70,14 +70,15 @@ target 'Touch' do
       # :ccache_enabled => true
     )
 
-    # 1. Fix deployment target for pods that specify versions below 15.0
-    # Xcode requires a minimum of 15.0
+    # 1. Fix deployment target, inhibit third-party warnings, and configure fmt/scripts
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-        if deployment_target && Gem::Version.new(deployment_target) < Gem::Version.new('15.0')
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
-        end
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+        config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
+        config.build_settings['OTHER_LDRFLAGS'] = '-Wl,-no_warn_duplicate_libraries'
       end
 
       # 2. Fix fmt consteval error on Apple Clang / Xcode 16+
@@ -91,7 +92,15 @@ target 'Touch' do
         end
       end
 
-      # 3. Suppress Xcode warnings for script phases with no outputs in Pod targets
+      # 3. Suppress comma operator warnings in RCT-Folly
+      if target.name == 'RCT-Folly'
+        target.build_configurations.each do |config|
+          cflags = config.build_settings['OTHER_CFLAGS'] || '$(inherited)'
+          config.build_settings['OTHER_CFLAGS'] = "#{cflags} -Wno-comma"
+        end
+      end
+
+      # 4. Suppress Xcode warnings for script phases with no outputs in Pod targets
       target.build_phases.each do |phase|
         if phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
           output_paths = phase.respond_to?(:output_paths) && phase.output_paths ? phase.output_paths : []
@@ -103,18 +112,31 @@ target 'Touch' do
         end
       end
     end
+    installer.pods_project.root_object.attributes['LastUpgradeCheck'] = '2710'
+    installer.pods_project.root_object.attributes['LastSwiftUpdateCheck'] = '1600'
+    installer.pods_project.save
 
-    # Suppress Xcode warnings for script phases with no outputs in main project
+    # Suppress Xcode warnings and configure main project
     installer.aggregate_targets.each do |aggregate_target|
       project = aggregate_target.user_project
+      project.build_configurations.each do |config|
+        config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+        config.build_settings['CLANG_WARN_COMMA'] = 'NO'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
+      end
       project.targets.each do |target|
         target.build_phases.each do |phase|
           if phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
-            output_paths = phase.respond_to?(:output_paths) && phase.output_paths ? phase.output_paths : []
-            output_file_list_paths = phase.respond_to?(:output_file_list_paths) && phase.output_file_list_paths ? phase.output_file_list_paths : []
-            has_outputs = !output_paths.empty? || !output_file_list_paths.empty?
-            if !has_outputs && phase.respond_to?(:always_out_of_date=)
-              phase.always_out_of_date = '1'
+            if phase.name == '[CP-User] [RNFB] Core Configuration'
+              phase.output_paths = ['$(DERIVED_FILE_DIR)/rnfb-core-config.txt']
+            else
+              output_paths = phase.respond_to?(:output_paths) && phase.output_paths ? phase.output_paths : []
+              output_file_list_paths = phase.respond_to?(:output_file_list_paths) && phase.output_file_list_paths ? phase.output_file_list_paths : []
+              has_outputs = !output_paths.empty? || !output_file_list_paths.empty?
+              if !has_outputs && phase.respond_to?(:always_out_of_date=)
+                phase.always_out_of_date = '1'
+              end
             end
           end
         end
@@ -122,9 +144,15 @@ target 'Touch' do
         # Ensure Swift toolchain search paths and settings on Touch target
         if target.name == 'Touch'
           target.build_configurations.each do |config|
-            config.build_settings['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
+            config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+            config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
             config.build_settings['SWIFT_VERSION'] = '5.0'
             config.build_settings['SWIFT_OBJC_BRIDGING_HEADER'] = 'Touch/Touch-Bridging-Header.h'
+            cxx_flags = config.build_settings['OTHER_CPLUSPLUSFLAGS'] || ['$(inherited)']
+            cxx_flags = [cxx_flags] unless cxx_flags.is_a?(Array)
+            cxx_flags << '-Wno-comma' unless cxx_flags.include?('-Wno-comma')
+            config.build_settings['OTHER_CPLUSPLUSFLAGS'] = cxx_flags
+            config.build_settings['OTHER_LDRFLAGS'] = '-Wl,-no_warn_duplicate_libraries'
             lib_paths = config.build_settings['LIBRARY_SEARCH_PATHS'] || ['$(inherited)']
             lib_paths = [lib_paths] unless lib_paths.is_a?(Array)
             [
@@ -137,24 +165,47 @@ target 'Touch' do
             end
             config.build_settings['LIBRARY_SEARCH_PATHS'] = lib_paths
           end
+
+          # Ensure Touch target has Copy Hermes dSYM build phase
+          phase_name = 'Copy Hermes dSYM'
+          unless target.build_phases.any? { |p| p.respond_to?(:name) && p.name == phase_name }
+            phase = project.new(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
+            phase.name = phase_name
+            phase.shell_path = '/bin/sh'
+            phase.shell_script = %(if [ -d "${PODS_ROOT}/../dSYMs/hermes.framework.dSYM" ] && [ -n "${DWARF_DSYM_FOLDER_PATH:-}" ]; then\n  mkdir -p "${DWARF_DSYM_FOLDER_PATH}"\n  /usr/bin/rsync -a --delete "${PODS_ROOT}/../dSYMs/hermes.framework.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"\nfi\n)
+            phase.always_out_of_date = '1'
+            target.build_phases << phase
+          end
         end
       end
       project.save
     end
 
-    # 4. Patch fmt/base.h header directly to disable consteval on Apple Clang
-    fmt_base_headers = Dir.glob(File.join(installer.sandbox.root, 'fmt', '**', 'base.h'))
-    fmt_base_headers.each do |header_file|
-      if File.exist?(header_file)
-        content = File.read(header_file)
-        new_content = content.gsub(
-          '#elif defined(__apple_build_version__) && __apple_build_version__ < 14000029L',
-          '#elif defined(__apple_build_version__)'
-        )
+    # 5. Ensure ENABLE_MODULE_VERIFIER is disabled across all Pods targets
+    pods_project_path = installer.pods_project.path
+    if File.exist?(File.join(pods_project_path, 'project.pbxproj'))
+      pbxproj_file = File.join(pods_project_path, 'project.pbxproj')
+      content = File.read(pbxproj_file)
+      if content.include?('ENABLE_MODULE_VERIFIER = YES;')
+        File.write(pbxproj_file, content.gsub('ENABLE_MODULE_VERIFIER = YES;', 'ENABLE_MODULE_VERIFIER = NO;'))
+      end
+    end
+
+    # 6. Ensure nanopb headers use modular angle-bracket includes
+    umbrella = File.join(installer.sandbox.root, 'Target Support Files/nanopb/nanopb-umbrella.h')
+    if File.exist?(umbrella)
+      content = File.read(umbrella)
+      new_content = content.gsub('#import "pb', '#import <nanopb/pb')
+      File.write(umbrella, new_content) if new_content != content
+    end
+    ['pb_common.h', 'pb_decode.h', 'pb_encode.h'].each do |hdr|
+      hdr_path = File.join(installer.sandbox.root, 'nanopb', hdr)
+      if File.exist?(hdr_path)
+        content = File.read(hdr_path)
+        new_content = content.gsub('#include "pb.h"', '#include <nanopb/pb.h>')
         if new_content != content
-          File.chmod(0644, header_file)
-          File.write(header_file, new_content)
-          puts "Applied Apple Clang consteval patch to #{header_file}"
+          File.chmod(0644, hdr_path)
+          File.write(hdr_path, new_content)
         end
       end
     end
