@@ -1864,7 +1864,36 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-pager-view (8.0.2):
+  - react-native-pager-view (6.4.1):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-pager-view/common (= 6.4.1)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
+  - react-native-pager-view/common (6.4.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -1891,7 +1920,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - SocketRocket
-    - SwiftUIIntrospect (~> 1.0)
     - Yoga
   - react-native-safe-area-context (5.8.0):
     - boost
@@ -3115,7 +3143,6 @@ PODS:
     - SocketRocket
     - Yoga
   - SocketRocket (0.7.1)
-  - SwiftUIIntrospect (1.3.0)
   - TOCropViewController (2.7.4)
   - Yoga (0.0.0)
 
@@ -3234,7 +3261,6 @@ SPEC REPOS:
     - PromisesObjC
     - RecaptchaInterop
     - SocketRocket
-    - SwiftUIIntrospect
     - TOCropViewController
 
 EXTERNAL SOURCES:
@@ -3479,7 +3505,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 017336879e2e0fb7537bbc08c24f34e2384c9260
   React-microtasksnativemodule: 63ee6730cec233feab9cdcc0c100dc28a12e4165
   react-native-image-picker: 6051cfd030121b880a58f1cc0e5e33e9887804e4
-  react-native-pager-view: 3a5c38bfaadea13d891c9acd62130347a8eee8df
+  react-native-pager-view: 8052d29ea978e7461b5f3c19d3ec198f7bc43372
   react-native-safe-area-context: 7794f18549493f369e4ca4b3cd66843bd050ac66
   react-native-video: d7e6372a63833708a2f7a8b48fed59036910428c
   React-NativeModulesApple: cbceb3c4cb726838c461b13802a76cefa6f3476f
@@ -3529,10 +3555,9 @@ SPEC CHECKSUMS:
   RNVectorIcons: b822419238727deba7f1e9a2695b5b62007aca6d
   RNWorklets: 81607e980aa2b80a7ae07313f2a167ed4d4d3871
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  SwiftUIIntrospect: fee9aa07293ee280373a591e1824e8ddc869ba5d
   TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
   Yoga: cc4a6600d61e4e9276e860d4d68eebb834a050ba
 
-PODFILE CHECKSUM: a6139aa0dbc18ea6eb7895c69f03c8e9cba15a16
+PODFILE CHECKSUM: 16ebc5958650a61cadac969a41fdcf26eb5027f5
 
 COCOAPODS: 1.17.0

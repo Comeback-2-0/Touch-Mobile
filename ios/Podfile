@@ -195,7 +195,7 @@ target 'Touch' do
     umbrella = File.join(installer.sandbox.root, 'Target Support Files/nanopb/nanopb-umbrella.h')
     if File.exist?(umbrella)
       content = File.read(umbrella)
-      new_content = content.gsub('#import "pb', '#import <nanopb/pb')
+      new_content = content.gsub(/#import [<"](?:nanopb\/)?(pb[^>"]+)[>"]/, '#import <nanopb/\1>')
       File.write(umbrella, new_content) if new_content != content
     end
     ['pb_common.h', 'pb_decode.h', 'pb_encode.h'].each do |hdr|
