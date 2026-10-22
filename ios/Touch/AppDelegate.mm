@@ -14,18 +14,16 @@ extern "C" {
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  if ([FIRApp defaultApp] == nil) {
+    [FIRApp configure];
+  }
+
   self.moduleName = @"Touch";
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
-  BOOL success = [super application:application didFinishLaunchingWithOptions:launchOptions];
-
-  if ([FIRApp defaultApp] == nil) {
-    [FIRApp configure];
-  }
-
-  return success;
+  return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
