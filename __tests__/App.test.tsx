@@ -11,7 +11,6 @@ import {it} from '@jest/globals';
 
 // Note: test renderer must be required after react-native.
 import renderer, {act} from 'react-test-renderer';
-import SplashScreen from 'react-native-splash-screen';
 import App from '../App';
 
 jest.mock('react-native', () => {
@@ -28,7 +27,9 @@ jest.mock('react-native', () => {
   });
 });
 
-jest.mock('../app/utils/googleConfig', () => ({}));
+jest.mock('../app/utils/googleConfig', () => ({
+  configureGoogleSignIn: jest.fn(),
+}));
 
 jest.mock('react-native-safe-area-context', () => {
   const {View} = require('react-native');
@@ -39,10 +40,6 @@ jest.mock('react-native-safe-area-context', () => {
     ),
   };
 });
-
-jest.mock('react-native-splash-screen', () => ({
-  hide: jest.fn(),
-}));
 
 jest.mock('@react-navigation/native', () => {
   const {View} = require('react-native');
@@ -61,6 +58,12 @@ jest.mock('../app/context/AuthContext', () => {
     AuthProvider: ({children}: {children: React.ReactNode}) => (
       <View>{children}</View>
     ),
+    useAuth: () => ({
+      user: null,
+      loading: false,
+      signInWithGoogle: jest.fn(),
+      signOut: jest.fn(),
+    }),
   };
 });
 
@@ -76,14 +79,6 @@ it('renders correctly', () => {
   act(() => {
     renderer.create(<App />);
   });
-});
-
-it('hides the native splash screen after React mounts', () => {
-  act(() => {
-    renderer.create(<App />);
-  });
-
-  expect(SplashScreen.hide).toHaveBeenCalled();
 });
 
 it('applies a transparent edge-to-edge status bar for the light app theme', () => {

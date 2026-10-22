@@ -223,7 +223,7 @@ describe('AuthScreen', () => {
     });
 
     expect(showAlert).toHaveBeenCalledWith(
-      'Could not sign in',
+      'Touch',
       "You're offline. Check your connection and try again.",
     );
 

@@ -1,6 +1,5 @@
 // App.tsx
-import React, {useState} from 'react';
-import './app/utils/googleConfig';
+import React, {useEffect, useState} from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,6 +9,7 @@ import RootNavigator from './app/navigation/RootNavigator';
 import { communityLinking } from './app/navigation/communityLinking';
 import {navigationRef, flushPendingCommunityNotification} from './app/navigation/navigationRef';
 import {NotificationCoordinator} from './app/services/NotificationCoordinator';
+import {configureGoogleSignIn} from './app/utils/googleConfig';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +24,10 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const [navigationReady, setNavigationReady] = useState(false);
+
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   return (
     <SafeAreaProvider>

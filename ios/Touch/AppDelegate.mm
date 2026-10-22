@@ -58,4 +58,16 @@ extern "C" {
 #endif
 }
 
+- (Class)getModuleClassFromName:(const char *)name
+{
+  Class moduleClass = [super getModuleClassFromName:name];
+  if (moduleClass) {
+    return moduleClass;
+  }
+  if (strcmp(name, "RNGoogleSignin") == 0) {
+    return NSClassFromString(@"RNGoogleSignin");
+  }
+  return nil;
+}
+
 @end
