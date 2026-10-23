@@ -1,6 +1,7 @@
 #import "AppDelegate.h"
 
 #import <Firebase.h>
+#import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBundleURLProvider.h>
 
@@ -19,9 +20,14 @@ extern "C" {
   }
 
   self.moduleName = @"Touch";
+  self.dependencyProvider = [RCTAppDependencyProvider new];
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
+
+  // iOS 27 uses UIScene lifecycle.
+  // Let SceneDelegate create the scene-backed UIWindow and mount RN into it.
+  self.automaticallyLoadReactNativeWindow = NO;
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
