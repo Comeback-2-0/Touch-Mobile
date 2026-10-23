@@ -3,6 +3,9 @@
  * 
  * thiss is boring
  * this is
+ * dfdfd
+ * dfdfwfcc
+ * 
  */
 
 import 'react-native-gesture-handler';
