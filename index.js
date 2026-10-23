@@ -6,6 +6,11 @@
  * dfdfd
  * dfdfwfcc
  * 
+ * 
+ * dvd
+ * gg
+ * 
+ * 
  */
 
 import 'react-native-gesture-handler';
