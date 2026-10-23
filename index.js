@@ -10,7 +10,7 @@
  * dvd
  * gg
  * dfdfdsfa
- * 
+ * sex
  */
 
 import 'react-native-gesture-handler';
