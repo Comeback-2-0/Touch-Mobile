@@ -10,10 +10,7 @@ import {pastelColors} from '../theme/colors';
 // PostQueueProvider import preserved — will be restored when Community is ready
 // import { PostQueueProvider } from '../context/PostQueueContext';
 
-import SearchComingSoon from '../screens/coming-soon/SearchComingSoon';
 import CommunityStack from './CommunityStack';
-import ReelsComingSoon from '../screens/coming-soon/ReelsComingSoon';
-import HomeComingSoon from '../screens/coming-soon/HomeComingSoon';
 import ProfileStack from './ProfileStack';
 import PostReelStack from './PostReelsStack';
 import EditProfile from '../screens/EditProfile';
@@ -113,10 +110,7 @@ function BottomTabNavigator() {
         initialRouteName="ChatTab"
         screenOptions={getTabScreenOptions}
         tabBar={props => <CommunityTabBar {...props} />}>
-        <Tab.Screen name="Home" component={HomeComingSoon} />
-        <Tab.Screen name="SearchBar" component={SearchComingSoon} />
         <Tab.Screen name="ChatTab" component={CommunityStack} />
-        <Tab.Screen name="Reels" component={ReelsComingSoon} />
         <Tab.Screen name="ProfileTab" component={ProfileStack} />
       </Tab.Navigator>
     </CommunityTabBarProvider>

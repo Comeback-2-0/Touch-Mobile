@@ -109,3 +109,9 @@ describe('Settings support screens', () => {
     expect(mockGoBack).toHaveBeenCalledTimes(1);
   });
 });
+
+jest.mock('react-native-vector-icons/Feather',()=>{const {Text}=require('react-native');return ({name}:any)=>require('react').createElement(Text,null,name);});
+
+jest.mock('react-native-vector-icons/FontAwesome',()=>{const {Text}=require('react-native');return ({name}:any)=>require('react').createElement(Text,null,name);});
+
+jest.mock('react-native-vector-icons/MaterialCommunityIcons',()=>{const {Text}=require('react-native');return ({name}:any)=>require('react').createElement(Text,null,name);});

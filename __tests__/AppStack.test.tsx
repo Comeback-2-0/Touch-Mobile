@@ -117,7 +117,7 @@ describe('AppStack', () => {
   it('opens Communities by default without reordering the tabs', () => {
     act(() => { renderer.create(<AppStack />); });
     expect(mockInitialTab).toBe('ChatTab');
-    expect(mockTabScreens).toEqual(['Home', 'SearchBar', 'ChatTab', 'Reels', 'ProfileTab']);
+    expect(mockTabScreens).toEqual(['ChatTab', 'ProfileTab']);
   });
   beforeEach(() => {
     mockNativeScreens.length = 0;
@@ -149,22 +149,21 @@ describe('AppStack', () => {
       renderer.create(<AppStack />);
     });
 
-    expect(mockTabScreens).toEqual(['Home', 'SearchBar', 'ChatTab', 'Reels', 'ProfileTab']);
+    expect(mockTabScreens).toEqual(['ChatTab', 'ProfileTab']);
     expect(mockTabIcons).toEqual({
-      Home: 'Feather:home',
-      SearchBar: 'Feather:search',
       ChatTab: 'Feather:users',
-      Reels: 'Feather:smartphone',
       ProfileTab: 'Feather:user',
     });
   });
 
-  it('uses the animated home placeholder for the Home tab', () => {
+  it('hides the unfinished Home, Search and Reels tabs', () => {
     act(() => {
       renderer.create(<AppStack />);
     });
 
-    expect(mockTabComponents.Home?.displayName).toBe('MockHomeComingSoon');
+    expect(mockTabComponents.Home).toBeUndefined();
+    expect(mockTabComponents.SearchBar).toBeUndefined();
+    expect(mockTabComponents.Reels).toBeUndefined();
   });
 
   it('does not add safe-area inset into tab bar height manually', () => {

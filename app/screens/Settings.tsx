@@ -2,6 +2,8 @@ import React, {useState} from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,41 +54,115 @@ type SettingsSection = {
 
 const sections: SettingsSection[] = [
   {
+    title: 'Account',
+    actions: [
+      {
+        key: 'delete-account',
+        label: 'Delete Account',
+        icon: 'trash-outline',
+        screen: 'DeleteAccount',
+      },
+      ...(Platform.OS === 'ios'
+        ? [{key: 'link-apple', label: 'Link Apple Account', icon: 'logo-apple'}]
+        : []),
+    ],
+  },
+  {
     title: 'Help',
     actions: [
       {key: 'faq', label: 'FAQ', icon: 'help-circle-outline', screen: 'FAQ'},
-      {key: 'contact-us', label: 'Contact Us', icon: 'mail-outline', url: LINKS.supportMail},
-      {key: 'report-a-bug', label: 'Report a Bug', icon: 'bug-outline', screen: 'ReportBug'},
-      {key: 'suggest-a-feature', label: 'Suggest a Feature', icon: 'bulb-outline', screen: 'SuggestFeature'},
+      {
+        key: 'contact-us',
+        label: 'Contact Us',
+        icon: 'mail-outline',
+        url: LINKS.supportMail,
+      },
+      {
+        key: 'report-a-bug',
+        label: 'Report a Bug',
+        icon: 'bug-outline',
+        screen: 'ReportBug',
+      },
+      {
+        key: 'suggest-a-feature',
+        label: 'Suggest a Feature',
+        icon: 'bulb-outline',
+        screen: 'SuggestFeature',
+      },
     ],
   },
   {
     title: 'Touch',
     actions: [
-      {key: 'instagram', label: 'Instagram', icon: 'logo-instagram', url: LINKS.instagram},
-      {key: 'website', label: 'Website', icon: 'globe-outline', url: LINKS.website},
-      {key: 'rate-on-google-play', label: 'Rate on Google Play', icon: 'star-outline', url: LINKS.playStore},
+      {
+        key: 'instagram',
+        label: 'Instagram',
+        icon: 'logo-instagram',
+        url: LINKS.instagram,
+      },
+      {
+        key: 'website',
+        label: 'Website',
+        icon: 'globe-outline',
+        url: LINKS.website,
+      },
+      {
+        key: 'rate-on-google-play',
+        label: 'Rate on Google Play',
+        icon: 'star-outline',
+        url: LINKS.playStore,
+      },
     ],
   },
   {
     title: 'Notifications',
     actions: [
-      {key: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications'},
+      {
+        key: 'notifications',
+        label: 'Notifications',
+        icon: 'notifications-outline',
+        screen: 'Notifications',
+      },
     ],
   },
   {
     title: 'Legal',
     actions: [
-      {key: 'privacy-policy', label: 'Privacy Policy', icon: 'shield-checkmark-outline', url: LINKS.privacy},
-      {key: 'terms-of-service', label: 'Terms of Service', icon: 'document-text-outline', url: LINKS.terms},
-      {key: 'community-guidelines', label: 'Community Guidelines', icon: 'people-outline', url: LINKS.community},
-      {key: 'child-safety-standards', label: 'Child Safety Standards', icon: 'heart-outline', url: LINKS.childSafety},
+      {
+        key: 'privacy-policy',
+        label: 'Privacy Policy',
+        icon: 'shield-checkmark-outline',
+        url: LINKS.privacy,
+      },
+      {
+        key: 'terms-of-service',
+        label: 'Terms of Service',
+        icon: 'document-text-outline',
+        url: LINKS.terms,
+      },
+      {
+        key: 'community-guidelines',
+        label: 'Community Guidelines',
+        icon: 'people-outline',
+        url: LINKS.community,
+      },
+      {
+        key: 'child-safety-standards',
+        label: 'Child Safety Standards',
+        icon: 'heart-outline',
+        url: LINKS.childSafety,
+      },
     ],
   },
   {
     title: 'App',
     actions: [
-      {key: 'app-version', label: 'App Version', icon: 'information-circle-outline', value: APP_VERSION},
+      {
+        key: 'app-version',
+        label: 'App Version',
+        icon: 'information-circle-outline',
+        value: APP_VERSION,
+      },
     ],
   },
 ];
@@ -101,6 +177,25 @@ export default function SettingsScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleAction = (action: SettingsAction) => {
+    if (action.key === 'link-apple') {
+      const {authenticateApple} = require('../services/appleSignIn');
+      authenticateApple(true)
+        .then(() =>
+          Alert.alert(
+            'Apple account linked',
+            'You can now use Apple to sign in to this Touch account.',
+          ),
+        )
+        .catch((error: any) =>
+          Alert.alert(
+            'Could not link Apple account',
+            error?.response?.data?.error ||
+              error?.message ||
+              'Please try again.',
+          ),
+        );
+      return;
+    }
     if (action.url) {
       openExternalUrl(action.url);
       return;
@@ -129,7 +224,11 @@ export default function SettingsScreen() {
           accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
           style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={pastelColors.auth.deepText} />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={pastelColors.auth.deepText}
+          />
         </Pressable>
         <Text testID="settings-title" style={styles.title}>
           Settings
@@ -156,7 +255,11 @@ export default function SettingsScreen() {
                     index < section.actions.length - 1 && styles.rowBorder,
                   ]}>
                   <View style={styles.iconWrap}>
-                    <Ionicons name={action.icon} size={19} color={pastelColors.accent} />
+                    <Ionicons
+                      name={action.icon}
+                      size={19}
+                      color={pastelColors.accent}
+                    />
                   </View>
                   <Text style={styles.rowLabel}>{action.label}</Text>
                   {action.value ? (
@@ -164,7 +267,11 @@ export default function SettingsScreen() {
                       {action.value}
                     </Text>
                   ) : (
-                    <Ionicons name="chevron-forward" size={18} color="#9A7C89" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#9A7C89"
+                    />
                   )}
                 </Pressable>
               ))}
@@ -181,7 +288,10 @@ export default function SettingsScreen() {
           style={styles.logoutButton}
           onPress={handleLogout}>
           {isLoggingOut ? (
-            <ActivityIndicator testID="settings-logout-spinner" color="#B42318" />
+            <ActivityIndicator
+              testID="settings-logout-spinner"
+              color="#B42318"
+            />
           ) : (
             <Ionicons name="log-out-outline" size={20} color="#B42318" />
           )}

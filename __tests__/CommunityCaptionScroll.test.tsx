@@ -96,3 +96,5 @@ it('keeps the loading header stationary if an older-page request fails during ex
   expect(list().props.ListHeaderComponent.props.children[1]?.props.children?.props.children).toBe('Load earlier posts');
   expect(list().props.data.map((post: any) => post.id)).toEqual(['post-1']);
 });
+
+jest.mock('react-native-vector-icons/FontAwesome',()=>{const {Text}=require('react-native');return ({name}:any)=>require('react').createElement(Text,null,name);});

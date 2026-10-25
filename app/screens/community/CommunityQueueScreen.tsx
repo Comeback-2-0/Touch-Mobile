@@ -1,5 +1,7 @@
+import {useHiddenPostsStore} from './hiddenPostsStore';
+import {useAuthStore} from '../../features/profile/store/authStore';
 import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -61,6 +63,14 @@ export default function CommunityQueueScreen() {
     params: {community},
   } = useRoute<Route>();
   const communityId = community.id || community._id;
+  const accountId=useAuthStore(state=>state.user?._id||'');
+  const hidden=useHiddenPostsStore(state=>state.hidden);
+  const hiddenLoaded=useHiddenPostsStore(state=>state.loaded);
+  useEffect(()=>{useHiddenPostsStore.getState().load().catch(()=>Alert.alert('Could not load hidden posts','Please restart Touch to retry.'));},[]);
+  const hidePost=async(postId:string)=>{
+    try{await useHiddenPostsStore.getState().hide(accountId,communityId,postId);showCommunityToast('Post hidden.');}
+    catch{Alert.alert('Could not hide post','Please try again.');}
+  };
   const [posts, setPosts] = useState<Post[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -204,7 +214,7 @@ export default function CommunityQueueScreen() {
         <QueueSkeleton />
       ) : (
         <FlatList
-          data={posts}
+          data={hiddenLoaded?posts.filter(post=>!hidden[JSON.stringify([accountId,communityId,post.id])]):[]}
           keyExtractor={p => p.id}
           refreshing={refreshing}
           onRefresh={() => load({refresh: true})}
@@ -303,6 +313,7 @@ export default function CommunityQueueScreen() {
                       {alreadyReported ? 'Reported' : 'Report'}
                     </Text>
                   </Pressable>
+                  {['Hide this post','Block User'].map(label=><Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={()=>hidePost(item.id)} style={styles.reportButton}><Text style={styles.reportLabel}>{label}</Text></Pressable>)}
                   {canManage ? (
                     <>
                       <Pressable

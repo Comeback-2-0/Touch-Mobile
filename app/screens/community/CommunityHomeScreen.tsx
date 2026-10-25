@@ -1,3 +1,4 @@
+import {useHiddenPostsStore} from './hiddenPostsStore';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
@@ -217,6 +218,15 @@ export default function CommunityHomeScreen() {
   const {params} = useRoute<Route>();
   const routeCommunity = params.community;
   const id = routeCommunity?.id || routeCommunity?._id || params.communityId || '';
+  const accountId=useAuthStore(state=>state.user?._id||'');
+  const hidden=useHiddenPostsStore(state=>state.hidden);
+  const hiddenLoaded=useHiddenPostsStore(state=>state.loaded);
+  useEffect(()=>{useHiddenPostsStore.getState().load().catch(()=>Alert.alert('Could not load hidden posts','Please restart Touch to retry.'));},[]);
+  const hideSelectedPost=async()=>{
+    if(!postMenuId)return;
+    try{await useHiddenPostsStore.getState().hide(accountId,id,postMenuId);setPostMenuId(null);showCommunityToast('Post hidden.');}
+    catch{Alert.alert('Could not hide post','Please try again.');}
+  };
   const profileUsername = useAuthStore(state => state.profile?.username);
   const userUsername = useAuthStore(state => state.user?.username);
   const username = profileUsername || userUsername || '';
@@ -443,7 +453,7 @@ export default function CommunityHomeScreen() {
         setMuted(Boolean(info.data.muted ?? m?.muted));
         if (nextCommunity?.contentVisibility !== 'members' || m?.status === 'active') {
           const [feed, queue] = await Promise.all([
-            api.get<{posts: Post[]; nextCursor?: string | null}>(`/communities/${id}/content/feed`, {
+            api.get<{posts: Post[]; nextCursor?: string | null; unreadCount?:number; firstUnreadPostId?:string|null}>(`/communities/${id}/content/feed`, {
               params: {limit: FEED_PAGE_SIZE},
             }),
             m?.status === 'active'
@@ -869,7 +879,7 @@ export default function CommunityHomeScreen() {
 
       <FlatList
         ref={listRef}
-        data={posts}
+        data={hiddenLoaded ? posts.filter(post=>!hidden[JSON.stringify([accountId,id,post.id])]) : []}
         keyExtractor={p => p.id}
         refreshing={refreshing}
         onRefresh={() => load({refresh: true})}
@@ -1007,6 +1017,7 @@ export default function CommunityHomeScreen() {
               <FontAwesome name="whatsapp" size={20} color="#25D366" />
               <Text style={styles.optionsRowText}>Share on WhatsApp</Text>
             </Pressable>
+            {['Hide this post','Block User'].map(label=><Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={hideSelectedPost} style={styles.optionsRow}><Text style={styles.optionsRowText}>{label}</Text></Pressable>)}
             <Pressable style={({pressed}) => [styles.optionsRow, pressed && styles.optionsRowPressed]} disabled={sharingPost} onPress={() => {
               setReportPostId(postMenuId);
               setPostMenuId(null);

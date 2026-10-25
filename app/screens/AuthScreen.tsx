@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, {Path} from 'react-native-svg';
 import {useAuth} from '../context/AuthContext';
+import AppleSignInButton from '../components/AppleSignInButton';
 import {pastelColors} from '../theme/colors';
 import {getAuthErrorMessage} from '../utils/authErrors';
 
@@ -110,7 +111,7 @@ type Props = {
 };
 
 export default function AuthScreen({route}: Props) {
-  const {signInWithGoogle} = useAuth();
+  const {signInWithGoogle, signInWithApple} = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const toastedRouteError = useRef(false);
   const buttonScale = useSharedValue(1);
@@ -147,6 +148,15 @@ export default function AuthScreen({route}: Props) {
     } finally {
       setSigningIn(false);
     }
+  };
+
+  const handleAppleLogin = async () => {
+    if(signingIn || !signInWithApple) return;
+    setSigningIn(true);
+    try { await signInWithApple(); }
+    catch(error:any) {
+      if(error?.code !== '1001') Alert.alert('Apple sign-in', error?.response?.data?.error || error?.message || 'Could not sign in. Please try again.');
+    } finally { setSigningIn(false); }
   };
 
   const openTerms = () => {
@@ -207,6 +217,7 @@ export default function AuthScreen({route}: Props) {
               />
             ) : null}
           </AnimatedPressable>
+          <AppleSignInButton onPress={handleAppleLogin} disabled={signingIn} />
         </View>
 
         <Text style={styles.termsText}>

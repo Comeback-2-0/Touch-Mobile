@@ -1,4 +1,5 @@
 export type SettingsStackParamList = {
+  DeleteAccount: undefined;
   SettingsHome: undefined;
   ChangePassword: undefined;
   Notifications: undefined;

@@ -1,4 +1,5 @@
 export type AuthErrorCode =
+  | 'pending-deletion'
   | 'network'
   | 'server'
   | 'google'
@@ -11,6 +12,8 @@ export type AuthFlowError = Error & {
 };
 
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
+  'pending-deletion':
+    'Account deletion has been requested. Your account is unavailable while deletion is pending.',
   network: "You're offline. Check your connection and try again.",
   server:
     'Touch is having trouble reaching the server. Please try again in a moment.',
@@ -38,9 +41,11 @@ export const normalizeAuthError = (error: unknown): AuthErrorCode => {
     code?: string | number;
     message?: string;
     request?: unknown;
-    response?: {status?: number};
+    response?: {status?: number; data?: {code?: string}};
   };
 
+  if (candidate?.response?.data?.code === 'ACCOUNT_DELETION_PENDING')
+    return 'pending-deletion';
   if (candidate?.authCode) return candidate.authCode;
 
   const code = candidate?.code ? String(candidate.code) : '';

@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How do I delete my account?',
-    answer: 'Go to Settings -> Account -> Delete Account.',
+    answer: 'Go to Settings -> Delete Account. Feedback is optional. Confirm your request; deletion is completed within 14 working days (Monday-Friday, excluding weekends).',
   },
   {
     question: 'What is Gopzo?',

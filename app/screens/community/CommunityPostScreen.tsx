@@ -1,3 +1,5 @@
+import {useAuthStore} from '../../features/profile/store/authStore';
+import {useHiddenPostsStore} from './hiddenPostsStore';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   AccessibilityInfo,
@@ -288,6 +290,14 @@ export default function CommunityPostScreen() {
   );
   const communityId =
     community?.id || community?._id || params.communityId || params.community?.id || '';
+  const accountId=useAuthStore(state=>state.user?._id||'');
+  const hidden=useHiddenPostsStore(state=>state.hidden);
+  const hiddenLoaded=useHiddenPostsStore(state=>state.loaded);
+  useEffect(()=>{useHiddenPostsStore.getState().load().catch(()=>Alert.alert('Could not load hidden posts','Please restart Touch to retry.'));},[]);
+  const hideThisPost=async()=>{
+    try{await useHiddenPostsStore.getState().hide(accountId,communityId,contentId);setMenuOpen(false);}
+    catch{Alert.alert('Could not hide post','Please try again.');}
+  };
   const base = `/communities/${communityId}/content/${contentId}`;
   const isPrivate = community?.contentVisibility === 'members';
   const blockCommunity = useBlockedCommunitiesStore(state => state.block);
@@ -452,13 +462,13 @@ export default function CommunityPostScreen() {
 
   useEffect(() => {
     if (sort === 'top' && post?.comments?.length && !topOrderIds.length) {
-      setTopOrderIds(sortCommentsForThread(post.comments, 'top').map(item => item.id));
+      setTopOrderIds(sortCommentsForThread<Comment>(post.comments, 'top').map(item => item.id));
     }
   }, [post, sort, topOrderIds.length]);
 
   const selectSort = (nextSort: 'time' | 'latest' | 'top') => {
     if (nextSort === 'top') {
-      setTopOrderIds(sortCommentsForThread(post?.comments || [], 'top').map(item => item.id));
+      setTopOrderIds(sortCommentsForThread<Comment>(post?.comments || [], 'top').map(item => item.id));
     }
     setSort(nextSort);
   };
@@ -668,7 +678,10 @@ export default function CommunityPostScreen() {
 
   const selectedReaction = post?.likedByMe ? 'like' : post?.dislikedByMe ? 'dislike' : '';
 
-  if (loading) {
+  if(hidden[JSON.stringify([accountId,communityId,contentId])]) {
+    return <SafeAreaView style={styles.safe}><View style={styles.center}><Text style={styles.errorTitle}>This post is hidden.</Text><Pressable onPress={()=>navigation.goBack()} style={styles.retry}><Text style={styles.retryText}>Go back</Text></Pressable></View></SafeAreaView>;
+  }
+  if (loading || !hiddenLoaded) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
@@ -1065,7 +1078,7 @@ export default function CommunityPostScreen() {
               </Pressable>
             </View>
           ) : null}
-          {replyTyping ? <Text style={styles.typingIndicator}>Someone is typing a reply…</Text> : null}
+          {replyTyping ? <Text style={styles.typingIndicator}>Someone is typing a replyâ€¦</Text> : null}
 
           <View style={styles.composer}>
             <TextInput
@@ -1161,6 +1174,7 @@ export default function CommunityPostScreen() {
         <Pressable style={styles.postMenuOverlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.postMenu}>
             <Text style={styles.postMenuTitle}>Post options</Text>
+            {['Hide this post','Block User'].map(label=><Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={hideThisPost} style={styles.postMenuRow}><Text style={styles.postMenuRowText}>{label}</Text></Pressable>)}
             <Pressable onPress={() => sharePost()} disabled={sharingPost} style={({pressed}) => [styles.postMenuRow, pressed && styles.postMenuRowPressed]} accessibilityLabel="Share post">
               {sharingPost ? <ActivityIndicator size="small" color={pastelColors.auth.deepText} /> : <Feather name="share-2" size={18} color={pastelColors.auth.deepText} />}
               <Text style={styles.postMenuRowText}>Share</Text>
@@ -1190,7 +1204,7 @@ export default function CommunityPostScreen() {
       <CommunityConfirmSheet
         visible={aliasConfirmOpen}
         title="Confirm your alias"
-        message={`You’ll comment as ${alias || 'anonymous'} on this post. You can’t change it later.`}
+        message={`Youâ€™ll comment as ${alias || 'anonymous'} on this post. You canâ€™t change it later.`}
         confirmLabel="Continue"
         cancelLabel="Keep editing"
         onConfirm={() => {

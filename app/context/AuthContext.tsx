@@ -16,15 +16,13 @@ import {
 import messaging from '@react-native-firebase/messaging';
 import {revokeNotificationDevice} from '../services/communityNotifications';
 import {createAuthFlowError} from '../utils/authErrors';
-import {
-  BackendUser,
-  useAuthStore,
-} from '../features/profile/store/authStore';
+import {BackendUser, useAuthStore} from '../features/profile/store/authStore';
 
 interface AuthContextShape {
   user: BackendUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple?: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -77,7 +75,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
       const credential = GoogleAuthProvider.credential(idToken);
       await signInWithCredential(auth, credential);
 
-      const response = await axios.post(`${API_URL}/auth/google`, {idToken}, {timeout: 15_000});
+      const response = await axios.post(
+        `${API_URL}/auth/google`,
+        {idToken},
+        {timeout: 15_000},
+      );
 
       await saveAuthTokens({
         accessToken: response.data.accessToken,
@@ -90,28 +92,45 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     }
   };
 
-  const signOut = async () => {
-    await revokeNotificationDevice(await messaging().getToken().catch(() => null));
-    const tokens = await getAuthTokens();
-    if (tokens?.refreshToken) {
-      try {
-        await axios.post(`${API_URL}/auth/logout`, {
-          refreshToken: tokens.refreshToken,
-        });
-      } catch (err) {
-        console.error('Backend logout failed:', err);
-      }
-    }
+  const signInWithApple = async () => {
+    const {authenticateApple} = require('../services/appleSignIn');
+    const response = await authenticateApple();
+    await saveAuthTokens({
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+    });
+    setUser(response.user);
+  };
 
-    await clearAuthTokens();
-    await firebaseSignOut(auth);
-    await GoogleSignin.revokeAccess();
-    await GoogleSignin.signOut();
-    resetAuth();
+  const signOut = async () => {
+    try {
+      await revokeNotificationDevice(
+        await messaging()
+          .getToken()
+          .catch(() => null),
+      );
+      const tokens = await getAuthTokens();
+      if (tokens?.refreshToken) {
+        try {
+          await axios.post(`${API_URL}/auth/logout`, {
+            refreshToken: tokens.refreshToken,
+          });
+        } catch (err) {
+          console.error('Backend logout failed:', err);
+        }
+      }
+    } finally {
+      await clearAuthTokens();
+      await firebaseSignOut(auth).catch(() => undefined);
+      await GoogleSignin.revokeAccess().catch(() => undefined);
+      await GoogleSignin.signOut().catch(() => undefined);
+      resetAuth();
+    }
   };
 
   return (
-    <AuthContext.Provider value={{user, loading, signInWithGoogle, signOut}}>
+    <AuthContext.Provider
+      value={{user, loading, signInWithGoogle, signInWithApple, signOut}}>
       {children}
     </AuthContext.Provider>
   );
