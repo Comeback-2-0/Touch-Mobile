@@ -69,3 +69,24 @@ This document describes how the current Touch mobile authentication and login UI
 2. The app revokes the notification device and posts the refresh token to `/auth/logout`.
 3. The backend deletes the refresh session.
 4. The app clears Keychain tokens, signs out Firebase and Google, and calls `resetAuth()`.
+
+## Push notification registration and delivery flow
+
+1. `App.tsx` mounts `NotificationCoordinator` inside `AuthProvider`.
+2. `NotificationCoordinator` waits until a Touch user exists and navigation is ready.
+3. `registerNotificationDevice()` in `app/services/communityNotifications.ts` checks iOS notification permission.
+4. On iOS it calls `messaging().registerDeviceForRemoteMessages()`, obtains the FCM token with `messaging().getToken()`, and posts it to `/notifications/devices`.
+5. The Axios request interceptor adds the Touch access token. The backend route in `touch-backend/src/modules/notifications/notification.routes.js` authenticates the request and calls `notification-device.repository.js` to upsert the device in PostgreSQL `notification_devices`.
+6. Community actions call `notifyUser()` in `touch-backend/src/modules/notifications/notification.service.js`. The service persists the in-app notification and starts `deliverCommunityNotification()`.
+7. `notification-delivery.service.js` selects active device records, applies notification preferences, and sends the FCM payload through Firebase Admin `sendEachForMulticast()`.
+8. Firebase Cloud Messaging forwards an iOS message to APNs using the production APNs authentication key configured in Firebase Console.
+9. iOS presents the notification when the app is backgrounded. When the app is active, `NotificationCoordinator` receives `onMessage()` and shows the in-app community toast. Notification taps use `onNotificationOpenedApp()` or `getInitialNotification()` and route through `navigateFromCommunityNotification()`.
+
+## Verified iOS push result — 2026-11-02
+
+- The TestFlight device successfully registered an active iOS FCM token in `notification_devices`.
+- iPhone notification permission was enabled.
+- The first targeted Firebase send failed with `messaging/third-party-auth-error: Invalid APNs credential`.
+- A production APNs `.p8` authentication key was then created in Apple Developer and uploaded to Firebase for the Touch iOS app.
+- A subsequent targeted send was accepted by Firebase, confirming the Firebase-to-APNs configuration path.
+- Secrets, private keys, authorization headers, and device tokens are intentionally excluded from this document.

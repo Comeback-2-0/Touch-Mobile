@@ -113,3 +113,16 @@ Before accepting a major change, the assistant must explain the proposed change 
 - Decision: Re-register the current notification device when the authenticated app returns to the foreground and log registration/delivery failures for developers.
 - Reason: A transient permission, network, APNs, or backend failure previously left the device unregistered with no retry or diagnostic signal.
 - Tradeoff: Resume can make a registration request, but the backend upsert is idempotent and prevents duplicate device records.
+
+## 2026-11-02 — Configure Firebase with a production APNs authentication key
+
+- Decision: Use an Apple APNs `.p8` authentication key configured in Firebase Cloud Messaging for the production iOS app.
+- Evidence: A targeted push reached Firebase and failed with `messaging/third-party-auth-error` and `Invalid APNs credential`. The iOS device token was already registered successfully, so the failure was in Firebase-to-APNs authentication rather than app permission or token registration.
+- Configuration: The key was created for APNs Production with Team Scoped (All Topics) and uploaded to the Firebase iOS app for bundle ID `com.pandittalk.touch` in project `touch-social-media-app`.
+- Tradeoff: The APNs key is an external console configuration and must be managed as a secret; it is intentionally not stored in the repository.
+
+## 2026-11-02 — Verify iOS push delivery with a targeted physical-device test
+
+- Decision: Validate delivery by sending a single targeted Firebase message to the registered iOS device, rather than using the existing broadcast script.
+- Reason: A broadcast test could notify unrelated users. The targeted test isolates the device and confirms the full path from the notification token through Firebase and APNs.
+- Result: Firebase accepted the targeted message after the production APNs key was uploaded. The device token and service-account credentials are not recorded in this documentation.
