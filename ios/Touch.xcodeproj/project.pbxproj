@@ -550,7 +550,7 @@
 					"\"$(SDKROOT)/usr/lib/swift\"",
 					"\"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)\"",
 				);
-				MARKETING_VERSION = 2.3.13;
+				MARKETING_VERSION = 2.3.14;
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(inherited)",
 					"-Wno-comma",
@@ -592,7 +592,7 @@
 					"\"$(SDKROOT)/usr/lib/swift\"",
 					"\"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)\"",
 				);
-				MARKETING_VERSION = 2.3.13;
+				MARKETING_VERSION = 2.3.14;
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(inherited)",
 					"-Wno-comma",
