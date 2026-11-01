@@ -126,3 +126,10 @@ Before accepting a major change, the assistant must explain the proposed change 
 - Decision: Validate delivery by sending a single targeted Firebase message to the registered iOS device, rather than using the existing broadcast script.
 - Reason: A broadcast test could notify unrelated users. The targeted test isolates the device and confirms the full path from the notification token through Firebase and APNs.
 - Result: Firebase accepted the targeted message after the production APNs key was uploaded. The device token and service-account credentials are not recorded in this documentation.
+
+## 2026-11-02 — Use verified HTTPS links for cross-platform sharing
+
+- Decision: Keep public share URLs on `https://app.touch.dophera.tech/c/*` and use Android App Links plus iOS Universal Links to open the installed Touch app directly.
+- Reason: HTTPS links are shareable from Messages, WhatsApp, browsers, and social platforms; the operating systems can verify the website-to-app association before routing the link to Touch.
+- Evidence: Android `assetlinks.json` was already available, while `https://app.touch.dophera.tech/.well-known/apple-app-site-association` returned `404`. The missing iOS association endpoint was added to `touch-share`.
+- Tradeoff: Users without Touch installed still reach the share website first, where platform store links are provided; the operating system does not automatically open an uninstalled app.

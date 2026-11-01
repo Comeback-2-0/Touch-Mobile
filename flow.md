@@ -90,3 +90,12 @@ This document describes how the current Touch mobile authentication and login UI
 - A production APNs `.p8` authentication key was then created in Apple Developer and uploaded to Firebase for the Touch iOS app.
 - A subsequent targeted send was accepted by Firebase, confirming the Firebase-to-APNs configuration path.
 - Secrets, private keys, authorization headers, and device tokens are intentionally excluded from this document.
+
+## Public share-link flow — 2026-11-02
+
+1. `touch-mobile/app/navigation/communityLinking.ts` creates public HTTPS links in the form `https://app.touch.dophera.tech/c/{communityId}/p/{contentId}`.
+2. `touch-share` serves the public post page at `/c/[id]/p/[postId]` and exposes `/.well-known/assetlinks.json` for Android App Links.
+3. `touch-share` now also exposes `/.well-known/apple-app-site-association`, associating `app.touch.dophera.tech/c/*` with `com.pandittalk.touch`.
+4. When Touch is installed and the platform association is verified, Android or iOS opens the matching app route directly; React Navigation maps the path to `CommunityPost`.
+5. When Touch is not installed, the operating system opens the share website. The page provides Google Play and App Store fallback links configured through `touch-share/.env`.
+6. The App Store fallback is configured with Apple ID `6824228482`; the Google Play fallback targets package `roy.ij.touch`.
