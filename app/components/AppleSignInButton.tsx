@@ -22,7 +22,7 @@ export default function AppleSignInButton({
       disabled={disabled}
       onPress={onPress}
       style={({pressed}) => [authButtonStyles.button, {marginTop: 14}, pressed && authButtonStyles.pressed]}>
-      <Icon name="logo-apple" size={22} color="#FFFFFF" accessible={false} />
+      <Icon name="logo-apple" size={22} color="#202124" accessible={false} />
       <Text style={authButtonStyles.label}>Sign In with Apple</Text>
     </Pressable>
   );

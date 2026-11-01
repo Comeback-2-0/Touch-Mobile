@@ -40,6 +40,19 @@ This document describes how the current Touch mobile authentication and login UI
 7. The backend Apple controller verifies the Firebase token, finds or creates the Touch user, and issues the Touch token pair.
 8. `AuthContext.tsx` stores the tokens and updates the auth store.
 
+## Apple email verification flow
+
+1. `/auth/apple` verifies the Firebase Apple token and checks the Apple subject first.
+2. A verified, non-private-relay email is matched by normalized email; an existing user is automatically updated with `appleSubject` and signed in.
+3. A missing, unverified, or private-relay email returns `APPLE_EMAIL_VERIFICATION_REQUIRED` without creating a user.
+4. `AuthScreen.tsx` catches that code and renders `AppleEmailVerificationScreen.tsx`, using the existing auth colors, button styles, legal copy, back action, and toast/error behavior.
+5. The user enters an email; `requestAppleEmailVerification()` posts the Apple Firebase ID token and email to `/auth/apple/email-verification/request`.
+6. The backend verifies the Apple token again, creates a Redis challenge containing the Apple subject and a hash of the OTP, and sends the branded email through the Resend service.
+7. The user enters the code or requests a resend. Redis enforces the challenge expiry, send limit, and verification-attempt limit.
+8. `verifyAppleEmailVerification()` posts the token, challenge ID, and code to `/auth/apple/email-verification/verify`.
+9. The backend verifies the Apple token again, checks that the Apple subject matches the challenge, verifies the OTP, then finds the verified email or creates a user.
+10. The backend stores the Apple subject and, when applicable, the Apple private-relay address, issues Touch tokens, and the mobile app stores them in Keychain.
+
 ## Authenticated API and refresh flow
 
 1. Feature APIs call the shared `api` Axios instance.

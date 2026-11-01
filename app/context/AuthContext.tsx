@@ -17,12 +17,14 @@ import messaging from '@react-native-firebase/messaging';
 import {revokeNotificationDevice} from '../services/communityNotifications';
 import {createAuthFlowError} from '../utils/authErrors';
 import {BackendUser, useAuthStore} from '../features/profile/store/authStore';
+import {verifyAppleEmailVerification} from '../services/appleSignIn';
 
 interface AuthContextShape {
   user: BackendUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithApple?: () => Promise<void>;
+  verifyAppleEmail?: (idToken: string, challengeId: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -128,9 +130,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     }
   };
 
+  const verifyAppleEmail = async (idToken: string, challengeId: string, code: string) => {
+    const response = await verifyAppleEmailVerification(idToken, challengeId, code);
+    await saveAuthTokens({accessToken: response.accessToken, refreshToken: response.refreshToken});
+    setUser(response.user);
+  };
+
   return (
     <AuthContext.Provider
-      value={{user, loading, signInWithGoogle, signInWithApple, signOut}}>
+      value={{user, loading, signInWithGoogle, signInWithApple, verifyAppleEmail, signOut}}>
       {children}
     </AuthContext.Provider>
   );

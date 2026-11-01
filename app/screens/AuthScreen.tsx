@@ -25,6 +25,8 @@ import AppleSignInButton from '../components/AppleSignInButton';
 import {authButtonStyles} from '../components/authButtonStyles';
 import {pastelColors} from '../theme/colors';
 import {getAuthErrorMessage} from '../utils/authErrors';
+import AppleEmailVerificationScreen from './AppleEmailVerificationScreen';
+import type {AppleEmailVerificationRequired} from '../services/appleSignIn';
 
 const AnimatedView = Animated.View as React.ComponentType<any>;
 const APP_ICON = require('../../assets/images/app-logo.png');
@@ -109,6 +111,7 @@ type Props = {
 export default function AuthScreen({route}: Props) {
   const {signInWithGoogle, signInWithApple} = useAuth();
   const [signingIn, setSigningIn] = useState(false);
+  const [appleVerificationError, setAppleVerificationError] = useState<AppleEmailVerificationRequired | null>(null);
   const toastedRouteError = useRef(false);
 
   useEffect(() => {
@@ -137,9 +140,17 @@ export default function AuthScreen({route}: Props) {
     setSigningIn(true);
     try { await signInWithApple(); }
     catch(error:any) {
+      if (error?.code === 'APPLE_EMAIL_VERIFICATION_REQUIRED') {
+        setAppleVerificationError(error);
+        return;
+      }
       if(error?.code !== '1001') Alert.alert('Apple sign-in', error?.response?.data?.error || error?.message || 'Could not sign in. Please try again.');
     } finally { setSigningIn(false); }
   };
+
+  if (appleVerificationError) {
+    return <AppleEmailVerificationScreen error={appleVerificationError} onBack={() => setAppleVerificationError(null)} />;
+  }
 
   const openTerms = () => {
     Linking.openURL(TERMS_URL);

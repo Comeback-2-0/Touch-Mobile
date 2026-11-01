@@ -12,6 +12,10 @@ jest.mock('../app/context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('../app/services/appleSignIn', () => ({
+  requestAppleEmailVerification: jest.fn(),
+}));
+
 jest.mock('react-native-svg', () => {
   const {View} = require('react-native');
   return {
