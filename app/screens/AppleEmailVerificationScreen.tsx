@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import Animated, {useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
 import {useAuth} from '../context/AuthContext';
 import {authButtonStyles} from '../components/authButtonStyles';
 import {pastelColors} from '../theme/colors';
@@ -8,6 +9,7 @@ import {requestAppleEmailVerification, AppleEmailVerificationRequired} from '../
 
 const APP_ICON = require('../../assets/images/app-logo.png');
 const TERMS_URL = 'https://ij-roy.github.io/touch/terms-and-conditions/';
+const AnimatedContainer = Animated.View as React.ComponentType<any>;
 
 function toast(message: string) {
   if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.LONG);
@@ -20,6 +22,9 @@ export default function AppleEmailVerificationScreen({error, onBack}: {error: Ap
   const [code, setCode] = useState('');
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const transition = useSharedValue(0);
+  React.useEffect(() => { transition.value = withTiming(1, {duration: 220}); }, [transition]);
+  const transitionStyle = useAnimatedStyle(() => ({opacity: transition.value, transform: [{translateX: (1 - transition.value) * 18}]}));
 
   const sendCode = async () => {
     if (busy) return;
@@ -46,7 +51,7 @@ export default function AppleEmailVerificationScreen({error, onBack}: {error: Ap
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <AnimatedContainer style={[styles.container, transitionStyle]}>
         <View style={styles.content}>
           <Image source={APP_ICON} style={styles.appIcon} resizeMode="contain" />
           <Text style={styles.title}>Verify your email</Text>
@@ -62,7 +67,7 @@ export default function AppleEmailVerificationScreen({error, onBack}: {error: Ap
           <Pressable disabled={busy} onPress={onBack} style={styles.linkButton}><Text style={styles.back}>Back to sign-in</Text></Pressable>
         </View>
         <Text style={styles.terms}>By continuing you agree to our <Text onPress={() => Linking.openURL(TERMS_URL)} style={styles.link}>terms and conditions</Text></Text>
-      </View>
+      </AnimatedContainer>
     </SafeAreaView>
   );
 }

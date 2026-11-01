@@ -71,3 +71,45 @@ Before accepting a major change, the assistant must explain the proposed change 
 - Decision: Put `android:screenOrientation="portrait"` on `MainActivity`, while retaining portrait behavior for the crop flow through the app’s main orientation policy.
 - Reason: The previous manifest setting was attached only to `UCropActivity`, so the main Touch screen could still rotate.
 - Tradeoff: Android users cannot rotate the main app into landscape, which matches the portrait-only product requirement.
+
+## 2026-11-01 — Make auth microanimations state-consistent and motion-aware
+
+- Decision: Use subtle spring press feedback, accent-colored loading indicators on both provider buttons, a short verification-screen entrance transition, and Reanimated reduced-motion support for the looping backdrop.
+- Reason: Each interaction state should communicate immediately without competing with the login action or causing discomfort for users who disable motion.
+- Tradeoff: The animation system is slightly more involved, but Google and Apple now expose the same feedback and the backdrop stops moving when reduced motion is enabled.
+
+## 2026-11-01 — Remove manual Apple linking from Settings
+
+- Decision: Remove the iOS-only `Link Apple Account` Settings row and its manual `/auth/apple/link` handler.
+- Reason: The current Apple sign-in flow automatically links verified matching emails and uses OTP verification for incomplete or private-relay Apple emails, making a separate manual action unnecessary.
+- Tradeoff: Users no longer have a secondary manual linking entry point, but account linking now follows one consistent sign-in flow.
+
+## 2026-11-01 — Preserve existing Apple links during OTP recovery
+
+- Decision: Reject OTP linking when the entered email already belongs to a Touch user linked to a different Apple subject.
+- Reason: Automatic linking must never replace an existing provider identity and silently disconnect another Apple account.
+- Tradeoff: A user must use the original Apple account or contact support when identities conflict, but existing account access remains intact.
+
+## 2026-11-01 — Scope community keyboard end-scroll workaround to Android
+
+- Decision: Keep the delayed `scrollToEnd` behavior on Android, but do not run it on iOS.
+- Reason: Android still depends on the existing workaround, while iOS already combines `KeyboardAvoidingView` with automatic keyboard insets; the forced end-scroll was moving the entire form away from the focused field.
+- Tradeoff: iOS relies on native keyboard-aware layout instead of the shared Android fallback, preserving the working Android behavior while preventing the iOS jump.
+
+## 2026-11-01 — Keep iOS notification listeners alive across app-state changes
+
+- Decision: Keep token-refresh, notification-open, and foreground-message listeners mounted for the authenticated session; use app-state changes only to retry device registration.
+- Reason: Removing `onNotificationOpenedApp` while the app was backgrounded could lose the user's notification tap. Foreground messages also need an explicit handler because iOS does not present the normal banner while the app is active.
+- Tradeoff: The coordinator owns listeners for the whole authenticated session, but cleanup remains deterministic on logout or unmount.
+
+## 2026-11-01 — Make notification navigation report its actual result
+
+- Decision: Return `true` from community notification navigation only when navigation succeeds, and keep pending data only when navigation is not ready.
+- Reason: The notification list used the return value to decide whether to go back; always returning `false` could undo a successful navigation.
+- Tradeoff: Existing callers now receive accurate navigation status and must treat `false` as queued or invalid data.
+
+## 2026-11-01 — Retry notification registration when iOS resumes
+
+- Decision: Re-register the current notification device when the authenticated app returns to the foreground and log registration/delivery failures for developers.
+- Reason: A transient permission, network, APNs, or backend failure previously left the device unregistered with no retry or diagnostic signal.
+- Tradeoff: Resume can make a registration request, but the backend upsert is idempotent and prevents duplicate device records.

@@ -15,7 +15,9 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withSpring,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
@@ -29,6 +31,8 @@ import AppleEmailVerificationScreen from './AppleEmailVerificationScreen';
 import type {AppleEmailVerificationRequired} from '../services/appleSignIn';
 
 const AnimatedView = Animated.View as React.ComponentType<any>;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable) as React.ComponentType<any>;
+const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView) as React.ComponentType<any>;
 const APP_ICON = require('../../assets/images/app-logo.png');
 const TERMS_URL = 'https://ij-roy.github.io/touch/terms-and-conditions/';
 
@@ -43,14 +47,19 @@ function showAuthToast(message: string | null | undefined) {
 
 function AnimatedBackdrop() {
   const drift = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      drift.value = 0;
+      return;
+    }
     drift.value = withRepeat(
       withTiming(1, {duration: 5600, easing: Easing.inOut(Easing.ease)}),
       -1,
       true,
     );
-  }, [drift]);
+  }, [drift, reducedMotion]);
 
   const topStyle = useAnimatedStyle(() => ({
     transform: [
@@ -70,8 +79,8 @@ function AnimatedBackdrop() {
 
   return (
     <>
-      <AnimatedView style={[styles.backdropPanelTop, topStyle]} />
-      <AnimatedView style={[styles.backdropPanelBottom, bottomStyle]} />
+      <AnimatedView style={[styles.backdropPanelTop, !reducedMotion && topStyle]} />
+      <AnimatedView style={[styles.backdropPanelBottom, !reducedMotion && bottomStyle]} />
       <View style={styles.backdropStripe} />
     </>
   );
@@ -108,11 +117,30 @@ type Props = {
   };
 };
 
+type SignInProvider = 'google' | 'apple' | null;
+
 export default function AuthScreen({route}: Props) {
   const {signInWithGoogle, signInWithApple} = useAuth();
-  const [signingIn, setSigningIn] = useState(false);
+  const [signingInProvider, setSigningInProvider] = useState<SignInProvider>(null);
   const [appleVerificationError, setAppleVerificationError] = useState<AppleEmailVerificationRequired | null>(null);
+  const buttonScale = useSharedValue(1);
+  const screenTransition = useSharedValue(0);
   const toastedRouteError = useRef(false);
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: buttonScale.value}],
+  }));
+  const screenTransitionStyle = useAnimatedStyle(() => ({
+    opacity: screenTransition.value,
+    transform: [{translateX: (1 - screenTransition.value) * -18}],
+  }));
+
+  useEffect(() => {
+    if (!appleVerificationError) {
+      screenTransition.value = 0;
+      screenTransition.value = withTiming(1, {duration: 220});
+    }
+  }, [appleVerificationError, screenTransition]);
 
   useEffect(() => {
     if (!route?.params?.authError || toastedRouteError.current) return;
@@ -122,22 +150,22 @@ export default function AuthScreen({route}: Props) {
 
 
   const handleLogin = async () => {
-    if (signingIn) return;
+    if (signingInProvider) return;
 
-    setSigningIn(true);
+    setSigningInProvider('google');
 
     try {
       await signInWithGoogle();
     } catch (err) {
       showAuthToast(getAuthErrorMessage(err));
     } finally {
-      setSigningIn(false);
+      setSigningInProvider(null);
     }
   };
 
   const handleAppleLogin = async () => {
-    if(signingIn || !signInWithApple) return;
-    setSigningIn(true);
+    if(signingInProvider || !signInWithApple) return;
+    setSigningInProvider('apple');
     try { await signInWithApple(); }
     catch(error:any) {
       if (error?.code === 'APPLE_EMAIL_VERIFICATION_REQUIRED') {
@@ -145,7 +173,7 @@ export default function AuthScreen({route}: Props) {
         return;
       }
       if(error?.code !== '1001') Alert.alert('Apple sign-in', error?.response?.data?.error || error?.message || 'Could not sign in. Please try again.');
-    } finally { setSigningIn(false); }
+    } finally { setSigningInProvider(null); }
   };
 
   if (appleVerificationError) {
@@ -157,7 +185,7 @@ export default function AuthScreen({route}: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <AnimatedSafeAreaView style={[styles.safeArea, screenTransitionStyle]}>
       <AnimatedBackdrop />
       <View style={styles.container}>
         <View style={[styles.content, Platform.OS === 'android' && styles.contentAndroid]}>
@@ -181,28 +209,30 @@ export default function AuthScreen({route}: Props) {
             scroll moodly, chat ghostly
           </Text>
 
-          <Pressable
+          <AnimatedPressable
             testID="google-signin-button"
             accessibilityRole="button"
             accessibilityLabel="Sign In With Google"
-            accessibilityState={{busy: signingIn, disabled: signingIn}}
-            disabled={signingIn}
+            accessibilityState={{busy: signingInProvider === 'google', disabled: Boolean(signingInProvider)}}
+            disabled={Boolean(signingInProvider)}
             onPress={handleLogin}
-            style={({pressed}) => [authButtonStyles.button, pressed && authButtonStyles.pressed]}>
+            onPressIn={() => { buttonScale.value = withSpring(0.98, {damping: 18, stiffness: 260}); }}
+            onPressOut={() => { buttonScale.value = withSpring(1, {damping: 18, stiffness: 260}); }}
+            style={[authButtonStyles.button, buttonAnimatedStyle]}>
             <View testID="google-button-content" style={styles.googleButtonContent}>
                 <GoogleIcon />
               <Text testID="google-signin-label" style={authButtonStyles.label}>
-                {signingIn ? 'Connecting...' : 'Sign In With Google'}
+                {signingInProvider === 'google' ? 'Connecting...' : 'Sign In With Google'}
               </Text>
             </View>
-            {signingIn ? (
+            {signingInProvider === 'google' ? (
               <ActivityIndicator
                 style={styles.googleButtonSpinner}
-                color={pastelColors.white}
+                color={pastelColors.accent}
               />
             ) : null}
-          </Pressable>
-          <AppleSignInButton onPress={handleAppleLogin} disabled={signingIn} />
+          </AnimatedPressable>
+          <AppleSignInButton onPress={handleAppleLogin} disabled={Boolean(signingInProvider)} loading={signingInProvider === 'apple'} />
         </View>
 
         <Text style={styles.termsText}>
@@ -216,7 +246,7 @@ export default function AuthScreen({route}: Props) {
           </Text>
         </Text>
       </View>
-    </SafeAreaView>
+    </AnimatedSafeAreaView>
   );
 }
 

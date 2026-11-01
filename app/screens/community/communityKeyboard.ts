@@ -50,12 +50,16 @@ export function useKeyboardAwareScroll() {
   const keyboardHeight = useKeyboardHeight();
 
   const onInputFocus = useCallback(() => {
-    const delay = Platform.OS === 'ios' ? 60 : 320;
+    // Android still needs the delayed end-scroll workaround. On iOS,
+    // KeyboardAvoidingView plus automatic keyboard insets already manage the
+    // viewport; forcing the whole form to the end hides the focused field.
+    if (Platform.OS !== 'android') return;
+
+    const delay = 320;
     setTimeout(() => {
       // React Native's New Architecture no longer guarantees the legacy
-      // findNodeHandle/UIManager measurement path. KeyboardAvoidingView and
-      // automatic insets handle the viewport; scrolling to the end keeps the
-      // focused field visible without relying on deprecated native APIs.
+      // Keep the existing Android behavior without relying on the deprecated
+      // findNodeHandle/UIManager measurement path.
       scrollRef.current?.scrollToEnd({animated: true});
     }, delay);
   }, []);

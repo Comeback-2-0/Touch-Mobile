@@ -48,6 +48,7 @@ jest.mock('react-native-reanimated', () => {
     withSequence: jest.fn((...values) => values[values.length - 1]),
     withSpring: jest.fn(value => value),
     withTiming: jest.fn(value => value),
+    useReducedMotion: jest.fn(() => false),
   };
 });
 

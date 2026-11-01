@@ -1,5 +1,4 @@
 import {CommonActions, createNavigationContainerRef} from '@react-navigation/native';
-import type {RootStackParamList} from './RootNavigator';
 
 const createRef = (createNavigationContainerRef as any) || (() => ({isReady: () => false, dispatch: () => undefined}));
 export const navigationRef = createRef();
@@ -53,10 +52,9 @@ function navigateNow(data: CommunityNotificationData) {
 
 export function navigateFromCommunityNotification(data: CommunityNotificationData) {
   if (!data.communityId) return false;
-  if (!navigateNow(data)) {
-    pendingCommunityNotification = data;
-  }
-  return false;
+  const navigated = navigateNow(data);
+  if (!navigated) pendingCommunityNotification = data;
+  return navigated;
 }
 
 export function flushPendingCommunityNotification() {

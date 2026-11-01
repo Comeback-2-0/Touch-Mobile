@@ -2,8 +2,6 @@ import React, {useState} from 'react';
 import {
   ActivityIndicator,
   Linking,
-  Platform,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,9 +60,6 @@ const sections: SettingsSection[] = [
         icon: 'trash-outline',
         screen: 'DeleteAccount',
       },
-      ...(Platform.OS === 'ios'
-        ? [{key: 'link-apple', label: 'Link Apple Account', icon: 'logo-apple'}]
-        : []),
     ],
   },
   {
@@ -177,25 +172,6 @@ export default function SettingsScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleAction = (action: SettingsAction) => {
-    if (action.key === 'link-apple') {
-      const {authenticateApple} = require('../services/appleSignIn');
-      authenticateApple(true)
-        .then(() =>
-          Alert.alert(
-            'Apple account linked',
-            'You can now use Apple to sign in to this Touch account.',
-          ),
-        )
-        .catch((error: any) =>
-          Alert.alert(
-            'Could not link Apple account',
-            error?.response?.data?.error ||
-              error?.message ||
-              'Please try again.',
-          ),
-        );
-      return;
-    }
     if (action.url) {
       openExternalUrl(action.url);
       return;
