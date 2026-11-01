@@ -16,20 +16,16 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, {Path} from 'react-native-svg';
 import {useAuth} from '../context/AuthContext';
 import AppleSignInButton from '../components/AppleSignInButton';
+import {authButtonStyles} from '../components/authButtonStyles';
 import {pastelColors} from '../theme/colors';
 import {getAuthErrorMessage} from '../utils/authErrors';
 
-const AnimatedPressable = Animated.createAnimatedComponent(
-  Pressable,
-) as React.ComponentType<any>;
 const AnimatedView = Animated.View as React.ComponentType<any>;
 const APP_ICON = require('../../assets/images/app-logo.png');
 const TERMS_URL = 'https://ij-roy.github.io/touch/terms-and-conditions/';
@@ -114,8 +110,6 @@ export default function AuthScreen({route}: Props) {
   const {signInWithGoogle, signInWithApple} = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const toastedRouteError = useRef(false);
-  const buttonScale = useSharedValue(1);
-  const glow = useSharedValue(0);
 
   useEffect(() => {
     if (!route?.params?.authError || toastedRouteError.current) return;
@@ -123,18 +117,6 @@ export default function AuthScreen({route}: Props) {
     showAuthToast(route.params.authError);
   }, [route?.params?.authError]);
 
-  useEffect(() => {
-    glow.value = withRepeat(
-      withTiming(1, {duration: 1800, easing: Easing.inOut(Easing.ease)}),
-      -1,
-      true,
-    );
-  }, [glow]);
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{scale: buttonScale.value}],
-    shadowOpacity: 0.16 + glow.value * 0.14,
-  }));
 
   const handleLogin = async () => {
     if (signingIn) return;
@@ -167,7 +149,7 @@ export default function AuthScreen({route}: Props) {
     <SafeAreaView style={styles.safeArea}>
       <AnimatedBackdrop />
       <View style={styles.container}>
-        <View style={styles.content}>
+        <View style={[styles.content, Platform.OS === 'android' && styles.contentAndroid]}>
           <Image
             testID="auth-app-icon"
             source={APP_ICON}
@@ -188,35 +170,27 @@ export default function AuthScreen({route}: Props) {
             scroll moodly, chat ghostly
           </Text>
 
-          <AnimatedPressable
+          <Pressable
             testID="google-signin-button"
             accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
+            accessibilityLabel="Sign In With Google"
             accessibilityState={{busy: signingIn, disabled: signingIn}}
             disabled={signingIn}
             onPress={handleLogin}
-            onPressIn={() => {
-              buttonScale.value = withSpring(0.97);
-            }}
-            onPressOut={() => {
-              buttonScale.value = withDelay(40, withSpring(1));
-            }}
-            style={[styles.googleButton, buttonStyle]}>
+            style={({pressed}) => [authButtonStyles.button, pressed && authButtonStyles.pressed]}>
             <View testID="google-button-content" style={styles.googleButtonContent}>
-              <View style={styles.googleIconWrap}>
                 <GoogleIcon />
-              </View>
-              <Text testID="google-signin-label" style={styles.googleLabel}>
-                {signingIn ? 'Connecting...' : 'Continue with Google'}
+              <Text testID="google-signin-label" style={authButtonStyles.label}>
+                {signingIn ? 'Connecting...' : 'Sign In With Google'}
               </Text>
             </View>
             {signingIn ? (
               <ActivityIndicator
                 style={styles.googleButtonSpinner}
-                color={pastelColors.accent}
+                color={pastelColors.white}
               />
             ) : null}
-          </AnimatedPressable>
+          </Pressable>
           <AppleSignInButton onPress={handleAppleLogin} disabled={signingIn} />
         </View>
 
@@ -283,6 +257,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  contentAndroid: {
+    transform: [{translateY: 56}],
+  },
   appIcon: {
     width: 124,
     height: 124,
@@ -310,41 +287,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  googleButton: {
-    width: '100%',
-    minHeight: 56,
-    maxWidth: 340,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: pastelColors.white,
-    borderWidth: 1,
-    borderColor: pastelColors.auth.glassBorder,
-    shadowColor: pastelColors.shadow,
-    shadowRadius: 12,
-    shadowOffset: {width: 0, height: 8},
-    elevation: 5,
-  },
   googleButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  googleIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: pastelColors.white,
-  },
-  googleLabel: {
-    marginLeft: 12,
-    color: pastelColors.googleText,
-    fontSize: 15,
-    fontWeight: '800',
   },
   googleButtonSpinner: {
     position: 'absolute',

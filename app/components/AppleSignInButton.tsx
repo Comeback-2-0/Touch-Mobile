@@ -1,8 +1,9 @@
 import React from 'react';
-import {Platform, View} from 'react-native';
+import {Platform, Pressable, Text} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {authButtonStyles} from './authButtonStyles';
 import {
   appleAuth,
-  AppleButton,
 } from '@invertase/react-native-apple-authentication';
 export default function AppleSignInButton({
   onPress,
@@ -13,17 +14,16 @@ export default function AppleSignInButton({
 }) {
   if (Platform.OS !== 'ios' || !appleAuth.isSupported) return null;
   return (
-    <View
-      pointerEvents={disabled ? 'none' : 'auto'}
+    <Pressable
+      testID="apple-signin-button"
+      accessibilityRole="button"
+      accessibilityLabel="Sign In with Apple"
       accessibilityState={{disabled}}
-      style={{width: '100%', maxWidth: 340}}>
-      <AppleButton
-        testID="apple-signin-button"
-        buttonStyle={AppleButton.Style.BLACK}
-        buttonType={AppleButton.Type.SIGN_IN}
-        onPress={onPress}
-        style={{width: '100%', maxWidth: 340, height: 56, marginTop: 14}}
-      />
-    </View>
+      disabled={disabled}
+      onPress={onPress}
+      style={({pressed}) => [authButtonStyles.button, {marginTop: 14}, pressed && authButtonStyles.pressed]}>
+      <Icon name="logo-apple" size={22} color="#FFFFFF" accessible={false} />
+      <Text style={authButtonStyles.label}>Sign In with Apple</Text>
+    </Pressable>
   );
 }

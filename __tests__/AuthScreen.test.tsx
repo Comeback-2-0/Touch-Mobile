@@ -6,6 +6,8 @@ import {useAuth} from '../app/context/AuthContext';
 
 const mockSignInWithGoogle = jest.fn();
 
+jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
+
 jest.mock('../app/context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
@@ -83,7 +85,7 @@ describe('AuthScreen', () => {
     expect(screen!.root.findByProps({testID: 'google-icon'})).toBeTruthy();
     expect(screen!.root.findByProps({testID: 'google-button-content'})).toBeTruthy();
     expect(screen!.root.findByProps({testID: 'google-signin-label'}).props.children).toBe(
-      'Continue with Google',
+      'Sign In With Google',
     );
   });
 

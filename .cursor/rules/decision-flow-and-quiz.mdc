@@ -1,0 +1,13 @@
+---
+description: Maintain decision and execution-flow documentation, and quiz before major changes are accepted
+alwaysApply: true
+---
+
+# Decision and Flow Documentation
+
+- For every meaningful implementation decision, append an entry to `decisions.md` with the decision, reason, affected scope, and accepted tradeoff.
+- Keep `flow.md` current when an entry point, call sequence, module boundary, authentication path, navigation path, or data flow changes.
+- Describe execution flow using concrete file and function names. Update it in the same change as the code when the flow changes.
+- Before proposing acceptance of a major change, explain the change and quiz the developer on its purpose, affected files, execution order, and tradeoffs. Treat the change as accepted only after the developer demonstrates understanding.
+- A major change includes a new feature, authentication or authorization change, data-model change, public API change, cross-platform behavior change, or refactor spanning multiple modules.
+- Minor reversible UI, copy, formatting, or isolated bug fixes may proceed without a quiz, but still require an entry in `decisions.md` when the choice is meaningful.
